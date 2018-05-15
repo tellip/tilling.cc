@@ -6,10 +6,9 @@
 #include <X11/Xlib.h>
 
 #include "config.hc"
+#include "helper.hc"
 
 namespace matrix_wm {
-    void error(const char *const &);
-
     class Socket {
         virtual ~Socket() = 0;
 
@@ -38,10 +37,6 @@ int main(int argc, char *argv[]) {
 }
 
 namespace matrix_wm {
-    void error(const char *const &fn) {
-        std::cout << "ERROR on " << fn << '\n';
-    }
-
     typeof(Socket::_sockfd) Socket::_sockfd;
     typeof(Socket::_addr) Socket::_addr;
 
