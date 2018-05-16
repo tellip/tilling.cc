@@ -1,42 +1,17 @@
-#include <arpa/inet.h>
-#include <cstring>
-#include <functional>
-#include <iostream>
-#include <thread>
-#include <unistd.h>
 #include <X11/Xlib.h>
-
-#include "config.hc"
 #include "helper.hc"
+#include "layout.hc"
 
 namespace matrix_wm {
 	class Socket {
 		virtual ~Socket() = 0;
 
-		static bool _looping;
 		static int _sockfd;
 		static sockaddr_in _addr;
 	public:
 		static void initialize();
 
 		static void loop();
-
-		static void stop();
-
-		static void clear();
-	};
-
-	class WM {
-		virtual ~WM() = 0;
-
-		static Display *_display;
-		static Atom _xia_protocols, _xia_delete_window;
-	public:
-		static void initialize();
-
-		static void loop();
-
-		static void stop();
 
 		static void clear();
 	};
@@ -46,21 +21,33 @@ int main(int argc, char *argv[]) {
 	try {
 		matrix_wm::Socket::initialize();
 		try {
-			matrix_wm::WM::initialize();
+			matrix_wm::display = XOpenDisplay(NULL);
+			if (matrix_wm::display == NULL) matrix_wm::error("XOpenDisplay");
+			XSelectInput(matrix_wm::display, XDefaultRootWindow(matrix_wm::display), SubstructureNotifyMask);
+			matrix_wm::Layout::initialize();
 
 			std::thread t_socket(matrix_wm::Socket::loop);
-			std::thread t_wm(matrix_wm::WM::loop);
+
+			try {
+				matrix_wm::looping = true;
+				while (matrix_wm::looping) {
+					XEvent event;
+					if (XCheckMaskEvent(matrix_wm::display, SubstructureNotifyMask, &event)) {
+						auto i = matrix_wm::Layout::event_handlers.find(event.type);
+						if (i != matrix_wm::Layout::event_handlers.end()) i->second();
+					}
+				}
+			} catch (...) {}
+			matrix_wm::sendSocket("-");
 
 			t_socket.join();
-			t_wm.join();
 		} catch (...) {}
-		matrix_wm::WM::clear();
+		XCloseDisplay(matrix_wm::display);
 	} catch (...) {}
 	matrix_wm::Socket::clear();
 }
 
 namespace matrix_wm {
-	typeof(Socket::_looping) Socket::_looping;
 	typeof(Socket::_sockfd) Socket::_sockfd;
 	typeof(Socket::_addr) Socket::_addr;
 
@@ -84,7 +71,6 @@ namespace matrix_wm {
 		if (!called) {
 			called = true;
 			try {
-				_looping = true;
 				std::function<void()> iterate = [&]() {
 					if (listen(_sockfd, SOMAXCONN) < 0) error("listen");
 					sockaddr_in addr;
@@ -94,56 +80,22 @@ namespace matrix_wm {
 					char buffer[256];
 					bzero(buffer, sizeof(buffer));
 					if (read(sockfd, buffer, sizeof(buffer)) < 0) error("read");
-					std::cout << "from client: " << buffer << '\n';
-					iterate();
+					if (strcmp(buffer, "-")) {
+						auto i = Layout::commands.find(buffer);
+						if (i != Layout::commands.end()) {
+							i->second();
+						}
+						iterate();
+					}
 				};
 				iterate();
 			} catch (...) {
-				_looping = false;
+				looping = false;
 			}
 		}
 	}
 
-	void Socket::stop() {
-
-	}
-
 	void Socket::clear() {
 		close(_sockfd);
-	}
-
-	typeof(WM::_display) WM::_display;
-	typeof(WM::_xia_protocols) WM::_xia_protocols;
-	typeof(WM::_xia_delete_window) WM::_xia_delete_window;
-
-	void WM::initialize() {
-		static bool called = false;
-		if (!called) {
-			called = true;
-
-			_display = XOpenDisplay(NULL);
-			if (_display == NULL) error("XOpenDisplay");
-			_xia_protocols = XInternAtom(_display, "WM_PROTOCOLS", False);
-			_xia_delete_window = XInternAtom(_display, "WM_DELETE_WINDOW", False);
-			if (_xia_protocols == None || _xia_delete_window == None) error("XInternAtom");
-			XSelectInput(_display, RootWindow(_display, DefaultScreen(_display)), SubstructureNotifyMask);
-		}
-	}
-
-	void WM::loop() {
-		static bool called = false;
-		if (!called) {
-			called = true;
-			try {
-				std::function<void()> iterate = [&]() {
-
-				};
-				iterate();
-			} catch (...) {}
-		}
-	}
-
-	void WM::clear() {
-		XCloseDisplay(_display);
 	}
 }
