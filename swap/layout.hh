@@ -1,8 +1,10 @@
 #pragma once
 
-#include "main.hh"
+#include "../main.hh"
 
 namespace matrix_wm {
+
+
 	namespace layout {
 		enum HV {
 			HORIZONTAL, VERTICAL
