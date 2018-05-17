@@ -14,6 +14,15 @@
 #include "config.hh"
 
 namespace matrix_wm {
+	typedef std::unordered_map<
+			int,
+			std::function<void(const XEvent &)>
+	> EventHandlers;
+	typedef std::unordered_map<
+			std::string,
+			std::function<void()>
+	> CommandHandlers;
+
 	auto error = [&](const char *const &fn) {
 		std::cout << "ERROR on " << fn << '\n';
 		throw true;
@@ -39,4 +48,4 @@ namespace matrix_wm {
 
 #include "sock.hh"
 #include "conn.hh"
-//#include "layout.hh"
+#include "control.hh"

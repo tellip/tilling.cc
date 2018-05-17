@@ -3,16 +3,13 @@
 #include "main.hh"
 
 namespace matrix_wm {
-	auto conn = [&](Display *&display) {
+	auto conn = [&](Display *&display, std::function<void()> &breakLoop) {
 		display = XOpenDisplay(NULL);
 		if (display == NULL) error("XOpenDisplay");
 		XSelectInput(display, XDefaultRootWindow(display), SubstructureNotifyMask);
 
 		//eventLoop
-		return [&](const std::unordered_map<
-				int,
-				std::function<void(const XEvent &)>
-		> &handlers) {
+		return [&](const EventHandlers &handlers) {
 			auto looping = true;
 			auto thread_loop = std::thread([&]() {
 				while (looping) {
@@ -24,19 +21,18 @@ namespace matrix_wm {
 				}
 			});
 
-			//breakLoop
-			return [&]() {
+			breakLoop = [&]() {
 				looping = false;
 
-				//joinLoopThread
+				//clean
 				return [&]() {
-					thread_loop.join();
-
-					//clean
-					return [&]() {
-						XCloseDisplay(display);
-					};
+					XCloseDisplay(display);
 				};
+			};
+
+			//joinThread
+			return [&]() {
+				thread_loop.join();
 			};
 		};
 	};

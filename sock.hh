@@ -3,7 +3,7 @@
 #include "main.hh"
 
 namespace matrix_wm {
-	auto sock = [&]() {
+	auto sock = [&](std::function<void()> &breakListen) {
 		auto sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 		if (sockfd < 0) error("socket");
 
@@ -15,10 +15,7 @@ namespace matrix_wm {
 		if (bind(sockfd, (sockaddr *) &addr, sizeof(addr)) < 0) error("bind");
 
 		//serverListen
-		return [&](const std::unordered_map<
-				std::string,
-				std::function<void()>
-		> &handlers) {
+		return [&](const CommandHandlers &handlers) {
 			auto thread_listen = std::thread([&]() {
 				std::function<void()> iterate = [&]() {
 					if (listen(sockfd, SOMAXCONN) < 0) error("listen");
@@ -40,14 +37,18 @@ namespace matrix_wm {
 				iterate();
 			});
 
-			//breaskListen
-			return [&]() {
+			breakListen = [&]() {
 				sendSock("-");
 
-				//joinThread
+				//clean
 				return [&]() {
-					thread_listen.join();
+					close(sockfd);
 				};
+			};
+
+			//joinThread
+			return [&]() {
+				thread_listen.join();
 			};
 		};
 	};
