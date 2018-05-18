@@ -71,16 +71,24 @@ namespace matrix_wm {
 
 		callback(
 				//commands_handlers
-				CommandHandlers({
-										{"exit", [&]() {
-											breakListen();
-											breakLoop();
-										}}
-								}),
+				CommandHandlers(
+						{
+								{"exit", [&]() {
+									breakListen();
+									breakLoop();
+								}}
+						}
+				),
 				//event_masks
 				SubstructureNotifyMask,
 				//event_handlers
-				EventHandlers({})
+				EventHandlers(
+						{
+								{MapNotify, [&](const XEvent &event) {
+
+								}}
+						}
+				)
 		);
 	};
 }
