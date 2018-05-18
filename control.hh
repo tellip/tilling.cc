@@ -77,6 +77,8 @@ namespace matrix_wm {
 											breakLoop();
 										}}
 								}),
+				//event_masks
+				SubstructureNotifyMask,
 				//event_handlers
 				EventHandlers({})
 		);

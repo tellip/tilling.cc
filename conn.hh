@@ -9,7 +9,6 @@ namespace matrix_wm {
 		auto display_closed = false;
 		try {
 			const auto &display_substitute = display;
-			XSelectInput(display_substitute, XDefaultRootWindow(display), SubstructureNotifyMask);
 
 			bool looping;
 			callback(
@@ -19,12 +18,13 @@ namespace matrix_wm {
 						looping = false;
 					},
 					//loopEvents
-					[&](const EventHandlers &handlers, const auto &callback) {
+					[&](const long &event_masks, const EventHandlers &handlers, const auto &callback) {
+						XSelectInput(display_substitute, XDefaultRootWindow(display), event_masks);
 						looping = true;
 						auto thread_loop = std::thread([&]() {
 							while (looping) {
 								XEvent event;
-								if (XCheckMaskEvent(display, SubstructureNotifyMask, &event)) {
+								if (XCheckMaskEvent(display, event_masks, &event)) {
 									auto i = handlers.find(event.type);
 									if (i != handlers.end()) i->second(event);
 								}
