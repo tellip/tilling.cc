@@ -1,5 +1,6 @@
 #pragma once
 
+#include <X11/Xlib.h>
 #include "main.hh"
 
 namespace matrix_wm {
@@ -19,11 +20,12 @@ namespace matrix_wm {
 			typedef std::list<Node *> _Children;
 			typedef typename _Children::iterator _Position;
 			_Position _position;
-			int _x, _y, _width, _height;
+			int _x, _y;
+			unsigned int _width, _height;
 		public:
 //			void
 
-			virtual void configure(const HV &, const int &x, const int &y, const int &width, const int &height) {
+			virtual void configure(const HV &, const int &x, const int &y, const unsigned int &width, const unsigned int &height) {
 				_x = x;
 				_y = y;
 				_width = width;
@@ -32,21 +34,27 @@ namespace matrix_wm {
 
 			virtual void refresh(Display *const &)=0;
 
-			class Meta;
+			class Leaf;
 
-			class Comp;
+			class Branch;
 		};
 
-		class Node::Meta : public Node {
-			Window _window;
+		class Node::Leaf : public Node {
 		public:
+			typedef std::unordered_map<Window, typename Node::Leaf *> Leaves;
+			const Window window;
+			const typename Leaves::iterator key;
+
 			virtual void refresh(Display *const &display) {
-				XMoveWindow(display, _window, _x, _y);
-				XResizeWindow(display, _window, _width, _height);
+				XMoveResizeWindow(display, window, _x, _y, _width, _height);
 			}
+
+			Leaf(const Window &w, const typename Leaves::iterator &k) :
+					window(w),
+					key(key) {}
 		};
 
-		class Node::Comp : public Node {
+		class Node::Branch : public Node {
 			Node::_Children _children;
 		public:
 			void refresh(Display *const &display) {
@@ -57,7 +65,8 @@ namespace matrix_wm {
 		};
 
 		Node *root = NULL, *view = NULL;
-		typename Node::Meta *focused = NULL;
+		typename Node::Leaf *focused = NULL;
+		typename Node::Leaf::Leaves leaves;
 
 		auto refresh = [&]() {
 			display_width = XDisplayWidth(display, DefaultScreen(display));
@@ -87,7 +96,13 @@ namespace matrix_wm {
 				EventHandlers(
 						{
 								{MapNotify, [&](const XEvent &event) {
-									std::cout << "asdf\n";
+									auto xmap = event.xmap;
+									auto window = xmap.window;
+									if (leaves.find(window) == leaves.end() && !xmap.override_redirect) {
+										auto i = leaves.insert(std::make_pair(window, (typename Node::Leaf *) NULL)).first;
+										i->second = new typename Node::Leaf(window, i);
+
+									}
 								}}
 						}
 				)
