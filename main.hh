@@ -29,19 +29,19 @@ namespace matrix_wm {
 	};
 
 	auto sendSock = [&](const char *const &msg) {
-		auto sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-		if (sockfd < 0) matrix_wm::error("socket");
+		auto sock_server = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+		if (sock_server < 0) matrix_wm::error("socket");
 		else {
-			sockaddr_in serv_addr;
-			bzero((char *) &serv_addr, sizeof(serv_addr));
-			serv_addr.sin_family = AF_INET;
-			serv_addr.sin_addr.s_addr = inet_addr(config::socket_host);
-			serv_addr.sin_port = htons(config::socket_port_base);
-			if (connect(sockfd, (sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) matrix_wm::error("connect");
+			sockaddr_in sai_server;
+			bzero((char *) &sai_server, sizeof(sai_server));
+			sai_server.sin_family = AF_INET;
+			sai_server.sin_addr.s_addr = inet_addr(config::socket_host);
+			sai_server.sin_port = htons(config::socket_port_base);
+			if (connect(sock_server, (sockaddr *) &sai_server, sizeof(sai_server)) < 0) matrix_wm::error("connect");
 			else {
-				if (write(sockfd, msg, strlen(msg)) < 0) matrix_wm::error("write");
+				if (write(sock_server, msg, strlen(msg)) < 0) matrix_wm::error("write");
 			}
-			close(sockfd);
+			close(sock_server);
 		}
 	};
 }

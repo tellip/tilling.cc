@@ -3,37 +3,52 @@
 #include "main.hh"
 
 namespace matrix_wm {
-	auto conn = [&](Display *&display, std::function<void()> &breakLoop) {
-		display = XOpenDisplay(NULL);
+	auto conn = [&](const auto &callback) {
+		auto display = XOpenDisplay(NULL);
 		if (display == NULL) error("XOpenDisplay");
-		XSelectInput(display, XDefaultRootWindow(display), SubstructureNotifyMask);
+		auto display_closed = false;
+		try {
+			const auto &display_substitute = display;
+			XSelectInput(display_substitute, XDefaultRootWindow(display), SubstructureNotifyMask);
 
-		//eventLoop
-		return [&](const EventHandlers &handlers) {
-			auto looping = true;
-			auto thread_loop = std::thread([&]() {
-				while (looping) {
-					XEvent event;
-					if (XCheckMaskEvent(display, SubstructureNotifyMask, &event)) {
-						auto i = handlers.find(event.type);
-						if (i != handlers.end()) i->second(event);
+			bool looping;
+			callback(
+					display,
+					//breakLoop
+					[&]() {
+						looping = false;
+					},
+					//loopEvents
+					[&](const EventHandlers &handlers, const auto &callback) {
+						looping = true;
+						auto thread_loop = std::thread([&]() {
+							while (looping) {
+								XEvent event;
+								if (XCheckMaskEvent(display, SubstructureNotifyMask, &event)) {
+									auto i = handlers.find(event.type);
+									if (i != handlers.end()) i->second(event);
+								}
+							}
+						});
+
+						callback(
+								//joinThread
+								[&](const auto &callback) {
+									thread_loop.join();
+									callback(
+											//clean
+											[&]() {
+												display_closed = true;
+												XCloseDisplay(display);
+											}
+									);
+								}
+						);
 					}
-				}
-			});
-
-			breakLoop = [&]() {
-				looping = false;
-
-				//clean
-				return [&]() {
-					XCloseDisplay(display);
-				};
-			};
-
-			//joinThread
-			return [&]() {
-				thread_loop.join();
-			};
-		};
+			);
+		} catch (...) {
+			if (!display_closed) XCloseDisplay(display);
+			throw true;
+		}
 	};
 }

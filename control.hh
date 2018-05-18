@@ -3,12 +3,7 @@
 #include "main.hh"
 
 namespace matrix_wm {
-
-
-	auto control = [&](
-			Display *const &display, const std::function<void()> &breakListen, const std::function<void()> &breakLoop,
-			EventHandlers &event_handlers, CommandHandlers &command_handlers
-	) {
+	auto control = [&](const std::function<void()> &breakListen, Display *const &display, const std::function<void()> &breakLoop, const auto &callback) {
 		auto xia_protocols = XInternAtom(display, "WM_PROTOCOLS", False);
 		auto xia_delete_window = XInternAtom(display, "WM_DELETE_WINDOW", False);
 		if (xia_protocols == None || xia_delete_window == None) error("XInternAtom");
@@ -21,7 +16,7 @@ namespace matrix_wm {
 		class Node {
 		protected:
 			Node *_parent;
-			std::list<Node *>::iterator _position;
+			typename std::list<Node *>::iterator _position;
 			int _x, _y, _width, _height;
 		public:
 			void parent(Node *const &target) {}
@@ -60,7 +55,7 @@ namespace matrix_wm {
 		};
 
 		Node *root = NULL, *view = NULL;
-		Node::Meta *focused = NULL;
+		typename Node::Meta *focused = NULL;
 
 		auto refresh = [&]() {
 			display_width = XDisplayWidth(display, DefaultScreen(display));
@@ -74,11 +69,16 @@ namespace matrix_wm {
 
 		refresh();
 
-		command_handlers = {
-				{"exit", [&]() {
-					breakListen();
-					breakLoop();
-				}}
-		};
+		callback(
+				//commands_handlers
+				CommandHandlers({
+										{"exit", [&]() {
+											breakListen();
+											breakLoop();
+										}}
+								}),
+				//event_handlers
+				EventHandlers({})
+		);
 	};
 }
