@@ -5,8 +5,8 @@
 #include <functional>
 #include <iostream>
 #include <list>
-#include <sstream>
 #include <thread>
+#include <type_traits>
 #include <tuple>
 #include <unistd.h>
 #include <unordered_map>
@@ -15,15 +15,6 @@
 #include "config.hh"
 
 namespace matrix_wm {
-	const in_port_t socket_port = [&]() {
-		auto env_display_s = getenv("DISPLAY");
-		std::stringstream ss;
-		ss << env_display_s;
-		in_port_t env_display_i;
-		ss >> env_display_i;
-		return config::socket_port_base + env_display_i;
-	}();
-
 	typedef std::unordered_map<
 			int,
 			std::function<void(const XEvent &)>
@@ -37,6 +28,15 @@ namespace matrix_wm {
 		std::cout << "ERROR on " << fn << '\n';
 		throw true;
 	};
+
+	const in_port_t socket_port = [&]() {
+		auto s = getenv("DISPLAY");
+		char fmt[99];
+		sprintf(fmt, ":%%%d%c", sizeof(in_port_t) * 8, std::is_signed<in_port_t>::value ? 'd' : 'u');
+		in_port_t i;
+		if (!sscanf(s, fmt, &i)) error("environment variable \"DISPLAY\"");
+		return config::socket_port_base + i;
+	}();
 
 	auto sendSock = [&](const char *const &msg) {
 		auto sock_server = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);

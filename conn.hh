@@ -7,6 +7,7 @@ namespace matrix_wm {
 		auto display = XOpenDisplay(NULL);
 		if (display == NULL) error("XOpenDisplay");
 		auto display_closed = false;
+
 		try {
 			const auto &display_substitute = display;
 

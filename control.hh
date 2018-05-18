@@ -16,10 +16,12 @@ namespace matrix_wm {
 		class Node {
 		protected:
 			Node *_parent;
-			typename std::list<Node *>::iterator _position;
+			typedef std::list<Node *> _Children;
+			typedef typename _Children::iterator _Position;
+			_Position _position;
 			int _x, _y, _width, _height;
 		public:
-			void parent(Node *const &target) {}
+//			void
 
 			virtual void configure(const HV &, const int &x, const int &y, const int &width, const int &height) {
 				_x = x;
@@ -45,7 +47,7 @@ namespace matrix_wm {
 		};
 
 		class Node::Comp : public Node {
-			std::list<Node *> _children;
+			Node::_Children _children;
 		public:
 			void refresh(Display *const &display) {
 				for (auto i = _children.cbegin(); i != _children.cend(); i++) {
@@ -85,7 +87,7 @@ namespace matrix_wm {
 				EventHandlers(
 						{
 								{MapNotify, [&](const XEvent &event) {
-
+									std::cout << "asdf\n";
 								}}
 						}
 				)
