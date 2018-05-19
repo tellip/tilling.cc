@@ -55,14 +55,11 @@ namespace matrix_wm {
 			const Derived derived;
 
 			Node(const Type &t, Derived &&d) : node_type(t), derived(std::move(d)) {}
+
+			void poly(const std::unordered_map<int, std::function<void()>> &vf) {
+				vf.find(node_type)->second();
+			};
 		};
-
-
-//		struct NBranch : public Node {
-//			std::list<Node *> children;
-//
-//			NBranch(const typename Node::Type &t) : Node(t) {}
-//		};
 
 //		auto configureNode = [&](Node *const &node, const HV &hv, const int &x, const int &y, const unsigned int &width, const unsigned int &height) {
 //			node->hv = hv;
