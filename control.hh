@@ -12,7 +12,7 @@ namespace matrix_wm {
 		}([&](const char *const &cc) {
 			auto cm = DefaultColormap(display, XDefaultScreen(display));
 			XColor x_color;
-			XAllocNamedColor(display, cm, cc, &x_color, &x_color);
+			if (XAllocNamedColor(display, cm, cc, &x_color, &x_color) == 0) error("XAllocNamedColor");
 			return x_color.pixel;
 		});
 
@@ -21,9 +21,14 @@ namespace matrix_wm {
 		if (xia_protocols == None || xia_delete_window == None) error("XInternAtom");
 
 		int display_width, display_height;
+
 		enum HV {
 			HORIZONTAL = true, VERTICAL = false
 		} display_hv;
+
+		enum FB {
+			FORWARD = true, BACKWARD = false
+		};
 
 		struct Node {
 			Node *parent;
@@ -39,13 +44,14 @@ namespace matrix_wm {
 
 			struct Leaf {
 				const Window window;
-				const typename std::unordered_map<Window, Leaf *>::iterator key;
+				const typename std::unordered_map<Window, Node *>::iterator key;
 
 				Leaf(const Window &w, const typeof(key) &k) : window(w), key(k) {}
 			};
 
 			struct Branch {
 				std::list<Node *> children;
+				typename std::list<Node *>::iterator focused_position;
 			};
 
 			union Derived {
@@ -61,103 +67,105 @@ namespace matrix_wm {
 			};
 		};
 
-//		auto configureNode = [&](Node *const &node, const HV &hv, const int &x, const int &y, const unsigned int &width, const unsigned int &height) {
-//			node->hv = hv;
-//			node->x = x;
-//			node->y = y;
-//			node->width = width;
-//			node->height = height;
-//			node->poly({
-//							   {Node::Type::Leaf,   [&]() {}},
-//							   {Node::Type::Branch, [&]() {}}
-//					   });
-//		};
-//
-//		auto refreshNode = [&](Node *const &node) {
-//			node->poly({
-//							   {Node::Type::Leaf,   [&]() {
-//								   auto nleaf = dynamic_cast<NLeaf *>(node);
-//								   XMoveResizeWindow(display, nleaf->window, node->x, node->y, node->width, node->height);
-//							   }},
-//							   {Node::Type::Branch, [&]() {}}
-//					   });
-//		};
+		Node *root = NULL, *view = NULL, *active = NULL;
+		std::unordered_map<Window, Node *> nodes;
 
-//		class Node {
-//		protected:
-//			Display *const _display;
-//			Node *_parent;
-//
-//			_Position _position;
-//			int _x, _y;
-//			unsigned int _width, _height;
-//		public:
-////			void
-//
-//			virtual void configure(const HV &, const int &x, const int &y, const unsigned int &width, const unsigned int &height) {
-//				_x = x;
-//				_y = y;
-//				_width = width;
-//				_height = height;
-//			}
-//
-//			virtual void refresh()=0;
-//
-//			void refreshNormalize() const {
-//
-//			}
-//
-//			Node(Display *const &display) :
-//					_display(display) {}
-//
-//			class Leaf;
-//
-//			class Branch;
-//		};
-//
-//		class Node::Leaf : public Node {
-//		public:
-//			typedef std::unordered_map<Window, typename Node::Leaf *> Leaves;
-//			const Window window;
-//			const typename Leaves::iterator key;
-//
-//			virtual void refresh() {
-//				XMoveResizeWindow(_display, window, _x, _y, _width, _height);
-//			}
-//
-//			Leaf(Display *const &d, const Window &w, const typename Leaves::iterator &k) :
-//					Node(d),
-//					window(w),
-//					key(k) {
-//				XSetWindowBorderWidth(_display, window, config::border_width);
-//			}
-//		};
-//
-//		class Node::Branch : public Node {
-//			Node::_Children _children;
-//		public:
-//			void refresh() {
-//				for (auto i = _children.cbegin(); i != _children.cend(); i++) {
-//					(*i)->refresh();
-//				}
-//			}
-//
-//			Branch(Display *const &display) :
-//					Node(display) {}
-//		};
+		auto configureNode = [&](Node *const &node, const HV &hv, const int &x, const int &y, const unsigned int &width, const unsigned int &height) {
+			node->hv = hv;
+			node->x = x;
+			node->y = y;
+			node->width = width;
+			node->height = height;
+			node->poly({
+							   {Node::Type::Leaf,   [&]() {}},
+							   {Node::Type::Branch, [&]() {
+								   //...
+							   }}
+					   });
+		};
 
-//		Node *root = NULL, *view = NULL;
-//		typename Node::Leaf *focused = NULL;
-//		typename Node::Leaf::Leaves leaves;
+		auto constructLeaf = [&](const Window &window) {
+			auto i = nodes.insert(std::make_pair(window, (Node *) NULL)).first;
+			auto node = i->second = new Node(Node::Type::Leaf, ({
+				typename Node::Derived d;
+				d.leaf = new typename Node::Leaf(window, i);
+				d;
+			}));
+			XSetWindowBorderWidth(display, window, config::border_width);
+
+			return node;
+		};
+
+		auto joinNode = [&](Node *const &node, Node *const &target, const FB &fb) {
+			auto old_parent = node->parent;
+			if (old_parent != target) {
+				if (old_parent) {
+					//...
+				}
+				target->poly(
+						{
+								{Node::Type::Leaf,   [&]() {
+									auto new_grand_parent = target->parent;
+									auto new_parent = new Node(Node::Type::Branch, ({
+										typename Node::Derived d;
+										d.branch = new typename Node::Branch();
+										d;
+									}));
+									if (new_grand_parent) {
+										//...
+									}
+									new_parent->parent = new_grand_parent;
+									auto &children = new_parent->derived.branch->children;
+									target->position = children.insert(children.end(), target);
+									target->parent = new_parent;
+									node->position = children.insert(fb ? target->position : std::next(target->position), node);
+									node->parent = new_parent;
+
+									configureNode(new_parent, target->hv, target->x, target->y, target->width, target->height);
+								}},
+								{Node::Type::Branch, [&]() {
+									//...
+								}}
+						}
+				);
+			}
+		};
+
+		std::function<void(Node *const &)> focusNode = [&](Node *const &node) {
+			if (node->parent && node->parent->derived.branch->focused_position != node->position) {
+				node->parent->derived.branch->focused_position = node->position;
+				focusNode(node->parent);
+			}
+		};
+
+		std::function<void(Node *const &)> refreshNode = [&](Node *const &node) {
+			node->poly({
+							   {Node::Type::Leaf,   [&]() {
+								   XMoveResizeWindow(display, node->derived.leaf->window, node->x, node->y, node->width, node->height);
+							   }},
+							   {Node::Type::Branch, [&]() {
+								   auto &children = node->derived.branch->children;
+								   for (auto i = children.cbegin(); i != children.cend(); i++) {
+									   refreshNode(*i);
+								   }
+							   }}
+					   });
+		};
+
+		auto refreshLeafFocus = [&](Node *const &node, const bool &focused) {
+			if (node->node_type == Node::Type::Leaf) {
+				XSetWindowBorder(display, node->derived.leaf->window, focused ? focused_pixel : normal_pixel);
+			}
+		};
 
 		auto refresh = [&]() {
 			display_width = XDisplayWidth(display, DefaultScreen(display));
 			display_height = XDisplayHeight(display, DefaultScreen(display));
 			display_hv = (HV) (display_width >= display_height);
-//			if (view) {
-//				view->configure(display_hv, 0, 0, display_width, display_height);
-//				view->refresh();
-//			}
+			if (view) {
+				configureNode(view, display_hv, 0, 0, display_width, display_height);
+				refreshNode(view);
+			}
 		};
 
 		refresh();
@@ -180,11 +188,40 @@ namespace matrix_wm {
 								{MapNotify, [&](const XEvent &event) {
 									auto xmap = event.xmap;
 									auto window = xmap.window;
-//									if (leaves.find(window) == leaves.end() && !xmap.override_redirect) {
-//										auto i = leaves.insert(std::make_pair(window, (typename Node::Leaf *) NULL)).first;
-////										i->second = new typename Node::Leaf(display, window, i);
-//
-//									}
+									if (nodes.find(window) == nodes.end() && !xmap.override_redirect) {
+										auto node = constructLeaf(window);
+										node->parent = NULL;
+
+										if (!view) {
+											configureNode(node, display_hv, 0, 0, display_width - config::border_width * 2, display_height - config::border_width * 2);
+
+											refreshNode(node);
+
+											view = active = node;
+										} else {
+											view->poly(
+													{
+															{Node::Type::Leaf,   [&]() {
+																refreshLeafFocus(active, false);
+
+																joinNode(node, view, FB::BACKWARD);
+
+																refreshNode(node->parent);
+
+																view = node->parent;
+																active = node;
+															}},
+															{Node::Type::Branch, [&]() {
+																//...
+															}}
+													}
+											);
+										}
+
+										focusNode(node);
+
+										refreshLeafFocus(node, true);
+									}
 								}}
 						}
 				)
