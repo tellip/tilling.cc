@@ -106,6 +106,7 @@ namespace matrix_wm {
 				d.leaf = new typename Node::Leaf(window, i);
 				d;
 			}));
+			node->parent = NULL;
 			XSetWindowBorderWidth(display, window, config::border_width);
 
 			return node;
@@ -120,11 +121,13 @@ namespace matrix_wm {
 		};
 
 		auto constructBranch = [&]() -> Node * {
-			return new Node(Node::Type::Branch, ({
+			auto node = new Node(Node::Type::Branch, ({
 				typename Node::Derived d;
 				d.branch = new typename Node::Branch();
 				d;
 			}));
+			node->parent = NULL;
+			return node;
 		};
 
 		auto nodeJoin = [&](Node *const &node, Node *const &target, const FB &fb) {
@@ -245,7 +248,6 @@ namespace matrix_wm {
 									auto window = xmap.window;
 									if (nodes.find(window) == nodes.end() && !xmap.override_redirect) {
 										auto node = constructLeaf(window);
-										node->parent = NULL;
 
 										if (!active) {
 											configureNode(node, display_hv, -config::border_width, -config::border_width, display_width + config::border_width * 2, display_height + config::border_width * 2);
