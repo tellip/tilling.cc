@@ -84,7 +84,7 @@ namespace matrix_wm {
 					   });
 		};
 
-		auto constructLeaf = [&](const Window &window) {
+		auto constructLeaf = [&](const Window &window) -> Node * {
 			auto i = nodes.insert(std::make_pair(window, (Node *) NULL)).first;
 			auto node = i->second = new Node(Node::Type::Leaf, ({
 				typename Node::Derived d;
@@ -94,6 +94,14 @@ namespace matrix_wm {
 			XSetWindowBorderWidth(display, window, config::border_width);
 
 			return node;
+		};
+
+		auto constructBranch = [&]() -> Node * {
+			return new Node(Node::Type::Branch, ({
+				typename Node::Derived d;
+				d.branch = new typename Node::Branch();
+				d;
+			}));
 		};
 
 		auto joinNode = [&](Node *const &node, Node *const &target, const FB &fb) {
