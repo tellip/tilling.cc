@@ -24,7 +24,8 @@ namespace matrix_wm {
 
 		enum HV {
 			HORIZONTAL = true, VERTICAL = false
-		} display_hv;
+		};
+		HV display_hv = HV::HORIZONTAL;
 
 		enum FB {
 			FORWARD = true, BACKWARD = false
@@ -70,18 +71,32 @@ namespace matrix_wm {
 		Node *root = NULL, *view = NULL, *active = NULL;
 		std::unordered_map<Window, Node *> nodes;
 
-		auto configureNode = [&](Node *const &node, const HV &hv, const int &x, const int &y, const unsigned int &width, const unsigned int &height) {
+		std::function<void(Node *const &, const HV &, const int &, const int &, const unsigned int &, const unsigned int &)> configureNode;
+
+		auto configureChildren = [&](Node *const &node) {
+			if (node->node_type == Node::Type::Branch) {
+				auto &children = node->derived.branch->children;
+				switch (node->hv) {
+					case HV::HORIZONTAL: {
+						auto s = node->x + config::border_width, d = (node->width - config::border_width * 2) / children.size();
+						for (auto i = children.cbegin(); i != std::prev(children.cend()); i++) {
+							configureNode(*i, (HV) !node->hv, s, node->y + config::border_width, d, node->height - config::border_width * 2);
+							s += d;
+						}
+						configureNode(*(std::prev(children.cend())), (HV) !node->hv, s, node->y + config::border_width, node->x + node->width - config::border_width - s, node->height - config::border_width * 2);
+						break;
+					}
+				}
+			}
+		};
+
+		configureNode = [&](Node *const &node, const HV &hv, const int &x, const int &y, const unsigned int &width, const unsigned int &height) {
 			node->hv = hv;
 			node->x = x;
 			node->y = y;
 			node->width = width;
 			node->height = height;
-			node->poly({
-							   {Node::Type::Leaf,   [&]() {}},
-							   {Node::Type::Branch, [&]() {
-								   //...
-							   }}
-					   });
+			if (node->node_type == Node::Type::Branch) configureChildren(node);
 		};
 
 		auto constructLeaf = [&](const Window &window) -> Node * {
@@ -96,6 +111,14 @@ namespace matrix_wm {
 			return node;
 		};
 
+		auto destructLeaf = [&](Node *const &node) -> bool {
+			if (node && node->node_type == Node::Type::Leaf && !node->parent) {
+				nodes.erase(node->derived.leaf->key);
+				delete node;
+				return true;
+			} else return false;
+		};
+
 		auto constructBranch = [&]() -> Node * {
 			return new Node(Node::Type::Branch, ({
 				typename Node::Derived d;
@@ -104,38 +127,62 @@ namespace matrix_wm {
 			}));
 		};
 
-		auto joinNode = [&](Node *const &node, Node *const &target, const FB &fb) {
-			auto old_parent = node->parent;
-			if (old_parent != target) {
-				if (old_parent) {
-					//...
-				}
+		auto nodeJoin = [&](Node *const &node, Node *const &target, const FB &fb) {
+			if (node && !node->parent && target) {
 				target->poly(
 						{
 								{Node::Type::Leaf,   [&]() {
 									auto new_grand_parent = target->parent;
-									auto new_parent = new Node(Node::Type::Branch, ({
-										typename Node::Derived d;
-										d.branch = new typename Node::Branch();
-										d;
-									}));
+									auto new_parent = constructBranch();
 									if (new_grand_parent) {
-										//...
-									}
-									new_parent->parent = new_grand_parent;
+										auto &grand_children = new_grand_parent->derived.branch->children;
+										new_parent->position = grand_children.insert(target->position, new_parent);
+										new_parent->parent = new_grand_parent;
+										grand_children.erase(target->position);
+									} else new_parent->parent = NULL;
 									auto &children = new_parent->derived.branch->children;
 									target->position = children.insert(children.end(), target);
 									target->parent = new_parent;
-									node->position = children.insert(fb ? target->position : std::next(target->position), node);
+									node->position = children.insert(fb ? std::next(target->position) : target->position, node);
 									node->parent = new_parent;
-
-									configureNode(new_parent, target->hv, target->x, target->y, target->width, target->height);
 								}},
 								{Node::Type::Branch, [&]() {
-									//...
+									auto &children = target->derived.branch->children;
+									node->position = children.insert(fb ? children.end() : children.begin(), node);
+									node->parent = target;
 								}}
 						}
 				);
+			}
+		};
+
+		auto nodeMove = [&](Node *const &node, const typename std::list<Node *>::iterator &position, const FB &fb) {
+			if (node && node->parent) {
+				auto &children = node->parent->derived.branch->children;
+				children.erase(node->position);
+				node->position = children.insert(fb ? std::next(position) : position, node);
+			}
+		};
+
+		auto nodeQuit = [&](Node *const &node) {
+			if (node) {
+				auto &parent = node->parent;
+				if (parent) {
+					auto &children = parent->derived.branch->children;
+					children.erase(node->position);
+					node->parent = NULL;
+					if (children.size() == 1) {
+						auto &child = *children.cbegin();
+						children.erase(child->position);
+						auto &grand_parent = parent->parent;
+						if (grand_parent) {
+							auto &grand_children = grand_parent->derived.branch->children;
+							child->position = grand_children.insert(parent->position, child);
+							child->parent = grand_parent;
+							grand_children.erase(parent->position);
+						} else child->parent = NULL;
+					}
+				}
 			}
 		};
 
@@ -149,7 +196,7 @@ namespace matrix_wm {
 		std::function<void(Node *const &)> refreshNode = [&](Node *const &node) {
 			node->poly({
 							   {Node::Type::Leaf,   [&]() {
-								   XMoveResizeWindow(display, node->derived.leaf->window, node->x, node->y, node->width, node->height);
+								   XMoveResizeWindow(display, node->derived.leaf->window, node->x, node->y, node->width - config::border_width * 2, node->height - config::border_width * 2);
 							   }},
 							   {Node::Type::Branch, [&]() {
 								   auto &children = node->derived.branch->children;
@@ -171,7 +218,7 @@ namespace matrix_wm {
 			display_height = XDisplayHeight(display, DefaultScreen(display));
 			display_hv = (HV) (display_width >= display_height);
 			if (view) {
-				configureNode(view, display_hv, 0, 0, display_width, display_height);
+				configureNode(view, display_hv, -config::border_width, -config::border_width, display_width + config::border_width * 2, display_height + config::border_width * 2);
 				refreshNode(view);
 			}
 		};
@@ -193,42 +240,78 @@ namespace matrix_wm {
 				//event_handlers
 				EventHandlers(
 						{
-								{MapNotify, [&](const XEvent &event) {
+								{MapNotify,   [&](const XEvent &event) {
 									auto xmap = event.xmap;
 									auto window = xmap.window;
 									if (nodes.find(window) == nodes.end() && !xmap.override_redirect) {
 										auto node = constructLeaf(window);
 										node->parent = NULL;
 
-										if (!view) {
-											configureNode(node, display_hv, 0, 0, display_width - config::border_width * 2, display_height - config::border_width * 2);
+										if (!active) {
+											configureNode(node, display_hv, -config::border_width, -config::border_width, display_width + config::border_width * 2, display_height + config::border_width * 2);
 
 											refreshNode(node);
 
-											view = active = node;
+											root = view = node;
 										} else {
-											view->poly(
-													{
-															{Node::Type::Leaf,   [&]() {
-																refreshLeafFocus(active, false);
+											refreshLeafFocus(active, false);
 
-																joinNode(node, view, FB::BACKWARD);
+											if (active == view) {
+												nodeJoin(node, active, FB::FORWARD);
 
-																refreshNode(node->parent);
+												configureNode(node->parent, display_hv, -config::border_width, -config::border_width, display_width + config::border_width * 2, display_height + config::border_width * 2);
 
-																view = node->parent;
-																active = node;
-															}},
-															{Node::Type::Branch, [&]() {
-																//...
-															}}
-													}
-											);
+												refreshNode(node->parent);
+
+												view = node->parent;
+											} else {
+												nodeJoin(node, active->parent, FB::FORWARD);
+												nodeMove(node, active->position, FB::FORWARD);
+
+												configureChildren(node->parent);
+
+												refreshNode(node->parent);
+											}
 										}
 
 										focusNode(node);
 
 										refreshLeafFocus(node, true);
+
+										active = node;
+									}
+								}},
+								{UnmapNotify, [&](const XEvent &event) {
+									auto window = event.xunmap.window;
+									auto i = nodes.find(window);
+									if (i != nodes.end()) {
+										auto node = i->second;
+										auto parent = node->parent;
+										if (parent) {
+											auto &children = parent->derived.branch->children;
+											if (children.size() > 2) {
+//												auto new_active = (active == node ? *(node->position == children.begin() ? std::next(node->position) : std::prev(node->position)) : NULL);
+
+												nodeQuit(node);
+												destructLeaf(node);
+
+												configureChildren(parent);
+
+												refreshNode(parent);
+
+//												if (new_active) {
+//													focusNode(new_active);
+//
+//													refreshLeafFocus(new_active, true);
+//
+//													active
+//												}
+											} else {
+												//...
+											}
+										} else {
+											//...
+										}
 									}
 								}}
 						}
