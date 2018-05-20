@@ -131,7 +131,7 @@ namespace matrix_wm {
 		};
 
 		auto nodeJoin = [&](Node *const &node, Node *const &target, const FB &fb) {
-			if (node && !node->parent && target) {
+			if (!node->parent && target) {
 				target->poly(
 						{
 								{Node::Type::Leaf,   [&]() {
@@ -160,7 +160,7 @@ namespace matrix_wm {
 		};
 
 		auto nodeMove = [&](Node *const &node, const typename std::list<Node *>::iterator &position, const FB &fb) {
-			if (node && node->parent) {
+			if (node->parent) {
 				auto &children = node->parent->derived.branch->children;
 				children.erase(node->position);
 				node->position = children.insert(fb ? std::next(position) : position, node);
@@ -168,23 +168,21 @@ namespace matrix_wm {
 		};
 
 		auto nodeQuit = [&](Node *const &node) {
-			if (node) {
-				auto &parent = node->parent;
-				if (parent) {
-					auto &children = parent->derived.branch->children;
-					children.erase(node->position);
-					node->parent = NULL;
-					if (children.size() == 1) {
-						auto &child = *children.cbegin();
-						children.erase(child->position);
-						auto &grand_parent = parent->parent;
-						if (grand_parent) {
-							auto &grand_children = grand_parent->derived.branch->children;
-							child->position = grand_children.insert(parent->position, child);
-							child->parent = grand_parent;
-							grand_children.erase(parent->position);
-						} else child->parent = NULL;
-					}
+			auto &parent = node->parent;
+			if (parent) {
+				auto &children = parent->derived.branch->children;
+				children.erase(node->position);
+				node->parent = NULL;
+				if (children.size() == 1) {
+					auto &child = *children.cbegin();
+					children.erase(child->position);
+					auto &grand_parent = parent->parent;
+					if (grand_parent) {
+						auto &grand_children = grand_parent->derived.branch->children;
+						child->position = grand_children.insert(parent->position, child);
+						child->parent = grand_parent;
+						grand_children.erase(parent->position);
+					} else child->parent = NULL;
 				}
 			}
 		};
@@ -239,7 +237,7 @@ namespace matrix_wm {
 						}
 				),
 				//event_masks
-				SubstructureNotifyMask,
+				SubstructureNotifyMask | FocusChangeMask,
 				//event_handlers
 				EventHandlers(
 						{
@@ -256,7 +254,7 @@ namespace matrix_wm {
 
 											root = view = node;
 										} else {
-											refreshLeafFocus(active, false);
+//											refreshLeafFocus(active, false);
 
 											if (active == view) {
 												nodeJoin(node, active, FB::FORWARD);
@@ -276,11 +274,14 @@ namespace matrix_wm {
 											}
 										}
 
-										focusNode(node);
+										XSelectInput(display, window, FocusChangeMask);
+										XSetInputFocus(display, window, RevertToNone, CurrentTime);
 
-										refreshLeafFocus(node, true);
+//										focusNode(node);
 
-										active = node;
+//										refreshLeafFocus(node, true);
+
+//										active = node;
 									}
 								}},
 								{UnmapNotify, [&](const XEvent &event) {
@@ -313,6 +314,23 @@ namespace matrix_wm {
 											}
 										} else {
 											//...
+										}
+									}
+								}},
+								{FocusIn,     [&](const XEvent &event) {
+									auto window = event.xfocus.window;
+									auto i = nodes.find(window);
+
+									if (i != nodes.end()) {
+										auto node = i->second;
+										if (node != active) {
+											if (active) refreshLeafFocus(active, false);
+
+											focusNode(node);
+
+											refreshLeafFocus(node, true);
+
+											active = node;
 										}
 									}
 								}}
