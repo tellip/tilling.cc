@@ -99,6 +99,7 @@ namespace matrix_wm {
 			if (node->node_type == Node::Type::Branch) configureChildren(node);
 		};
 
+		const auto leaf_event_masks = FocusChangeMask | EnterWindowMask;
 		auto constructLeaf = [&](const Window &window) -> Node * {
 			auto i = nodes.insert(std::make_pair(window, (Node *) NULL)).first;
 			auto node = i->second = new Node(Node::Type::Leaf, ({
@@ -108,7 +109,7 @@ namespace matrix_wm {
 			}));
 			node->parent = NULL;
 			XSetWindowBorderWidth(display, window, config::border_width);
-			XSelectInput(display, window, FocusChangeMask);
+			XSelectInput(display, window, leaf_event_masks);
 
 			return node;
 		};
@@ -227,6 +228,33 @@ namespace matrix_wm {
 
 		refresh();
 
+		std::function<void()> recordPointerCoordinates;
+		std::function<bool()> checkPointerCoordinates;
+		[&]() {
+			int x, y;
+
+			Window root, child;
+			int root_x, root_y, win_x, win_y;
+			unsigned int mask;
+
+			recordPointerCoordinates = [&]() {
+				XQueryPointer(display, XDefaultRootWindow(display), &root, &child, &root_x, &root_y, &win_x, &win_y, &mask);
+				x = root_x;
+				y = root_y;
+			};
+
+			checkPointerCoordinates = [&]() -> bool {
+				XQueryPointer(display, XDefaultRootWindow(display), &root, &child, &root_x, &root_y, &win_x, &win_y, &mask);
+				return x == root_x && y == root_y;
+			};
+		}();
+
+		auto triggerLeafFocus = [&](Node *const &node) {
+			if (node->node_type == Node::Type::Leaf) {
+				XSetInputFocus(display, node->derived.leaf->window, RevertToNone, CurrentTime);
+			}
+		};
+
 		callback(
 				//commands_handlers
 				CommandHandlers(
@@ -237,8 +265,10 @@ namespace matrix_wm {
 								}}
 						}
 				),
-				//event_masks
-				SubstructureNotifyMask | FocusChangeMask,
+				//root_event_masks
+				SubstructureNotifyMask,
+				//leaf_event_masks
+				leaf_event_masks,
 				//event_handlers
 				EventHandlers(
 						{
@@ -281,7 +311,9 @@ namespace matrix_wm {
 
 										active = node;
 
-										XSetInputFocus(display, window, RevertToNone, CurrentTime);
+										triggerLeafFocus(node);
+
+										recordPointerCoordinates();
 									}
 								}},
 								{UnmapNotify, [&](const XEvent &event) {
@@ -322,15 +354,23 @@ namespace matrix_wm {
 									auto i = nodes.find(window);
 									if (i != nodes.end()) {
 										auto node = i->second;
-										if (node != active) {
-//											if (active) refreshLeafFocus(active, false);
-//
-//											focusNode(node);
-//
-//											refreshLeafFocus(node, true);
-//
-//											active = node;
-										}
+										if (node != active && !checkPointerCoordinates()) {
+											if (active) refreshLeafFocus(active, false);
+
+											focusNode(node);
+
+											refreshLeafFocus(node, true);
+
+											active = node;
+										} else if (active) triggerLeafFocus(active);
+									}
+								}},
+								{EnterNotify, [&](const XEvent &event) {
+									auto window = event.xcrossing.window;
+									auto i = nodes.find(window);
+									if (i != nodes.end()) {
+										auto node = i->second;
+										if (node != active && !checkPointerCoordinates()) triggerLeafFocus(node);
 									}
 								}}
 						}
