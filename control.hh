@@ -347,10 +347,19 @@ namespace matrix_wm {
 												}
 												nodeQuit(node);
 												configureChildren(parent);
-
 												refreshNode(parent);
 											} else {
-												//...
+												//------------debug here!
+												auto brother = *(node->position == children.begin() ? std::next(node->position) : std::prev(node->position));
+												if (active == node) new_active = brother;
+												nodeQuit(node);
+												configureNode(brother, parent->hv, parent->x, parent->y, parent->width, parent->height);
+												refreshNode(brother);
+												delete parent;
+												if (new_active) {
+													focusNode(new_active);
+													new_active = getFocusedLeaf(new_active);
+												}
 											}
 										} else {
 											//...
