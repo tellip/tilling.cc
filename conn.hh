@@ -1,5 +1,6 @@
 #pragma once
 
+#include <X11/Xlib.h>
 #include "main.hh"
 
 namespace matrix_wm {
@@ -8,43 +9,53 @@ namespace matrix_wm {
 		if (display == NULL) error("XOpenDisplay");
 		auto display_closed = false;
 
+		bool looping = false;
 		try {
 			const auto &display_substitute = display;
 
-			bool looping;
 			callback(
-					display,
-					//breakLoop
-					[&]() {
-						looping = false;
-					},
+					display_substitute,
 					//loopEvents
-					[&](const long &event_masks, const EventHandlers &handlers, const auto &callback) {
-						XSelectInput(display_substitute, XDefaultRootWindow(display), event_masks);
-						looping = true;
-						auto thread_loop = std::thread([&]() {
-							while (looping) {
-								XEvent event;
-								if (XCheckMaskEvent(display, event_masks, &event)) {
-									auto i = handlers.find(event.type);
-									if (i != handlers.end()) i->second(event);
+					[&](long event_masks, const EventHandlers &handlers, const auto &callback) {
+						if (!looping) {
+							event_masks |= SubstructureNotifyMask;
+							XSelectInput(display, XDefaultRootWindow(display), event_masks);
+							auto thread_loop = std::thread([&]() {
+								looping = true;
+								while (looping) {
+									XEvent event;
+									if (XCheckMaskEvent(display, event_masks, &event)) {
+										auto i = handlers.find(event.type);
+										if (i != handlers.end()) i->second(event);
+									}
 								}
-							}
-						});
+//								while (looping) {
+//									XEvent event;
+//									if (!XNextEvent(display, &event)) error("XNextEvent");
+//									auto i = handlers.find(event.type);
+//									if (i != handlers.end()) i->second(event);
+//								}
+							});
 
-						callback(
-								//joinThread
-								[&](const auto &callback) {
-									thread_loop.join();
-									callback(
-											//clean
-											[&]() {
-												display_closed = true;
-												XCloseDisplay(display);
-											}
-									);
-								}
-						);
+							callback(
+									//joinThread
+									[&](const auto &callback) {
+										thread_loop.join();
+										callback(
+												//clean
+												[&]() {
+													display_closed = true;
+													XCloseDisplay(display);
+												}
+										);
+									}
+							);
+						}
+					},
+					[&]() {
+						if (looping) looping = false;
+//						XEvent event;
+//						XSendEvent(display, XDefaultRootWindow(display), False, SubstructureNotifyMask, &event);
 					}
 			);
 		} catch (...) {

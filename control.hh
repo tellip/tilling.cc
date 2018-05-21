@@ -108,6 +108,7 @@ namespace matrix_wm {
 			}));
 			node->parent = NULL;
 			XSetWindowBorderWidth(display, window, config::border_width);
+			XSelectInput(display, window, FocusChangeMask);
 
 			return node;
 		};
@@ -254,7 +255,7 @@ namespace matrix_wm {
 
 											root = view = node;
 										} else {
-//											refreshLeafFocus(active, false);
+											refreshLeafFocus(active, false);
 
 											if (active == view) {
 												nodeJoin(node, active, FB::FORWARD);
@@ -274,14 +275,13 @@ namespace matrix_wm {
 											}
 										}
 
-										XSelectInput(display, window, FocusChangeMask);
+										focusNode(node);
+
+										refreshLeafFocus(node, true);
+
+										active = node;
+
 										XSetInputFocus(display, window, RevertToNone, CurrentTime);
-
-//										focusNode(node);
-
-//										refreshLeafFocus(node, true);
-
-//										active = node;
 									}
 								}},
 								{UnmapNotify, [&](const XEvent &event) {
@@ -320,17 +320,16 @@ namespace matrix_wm {
 								{FocusIn,     [&](const XEvent &event) {
 									auto window = event.xfocus.window;
 									auto i = nodes.find(window);
-
 									if (i != nodes.end()) {
 										auto node = i->second;
 										if (node != active) {
-											if (active) refreshLeafFocus(active, false);
-
-											focusNode(node);
-
-											refreshLeafFocus(node, true);
-
-											active = node;
+//											if (active) refreshLeafFocus(active, false);
+//
+//											focusNode(node);
+//
+//											refreshLeafFocus(node, true);
+//
+//											active = node;
 										}
 									}
 								}}
