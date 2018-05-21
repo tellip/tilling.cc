@@ -196,6 +196,18 @@ namespace matrix_wm {
 			}
 		};
 
+		std::function<Node *(Node *const &)> getFocusedLeaf = [&](Node *const &node) -> Node * {
+			switch (node->node_type) {
+				case Node::Type::Leaf:
+					return node;
+				case Node::Type::Branch:
+					return getFocusedLeaf(*node->derived.branch->focused_position);
+				default:
+					error("node->node_type");
+					return NULL;
+			}
+		};
+
 		std::function<void(Node *const &)> refreshNode = [&](Node *const &node) {
 			node->poly({
 							   {Node::Type::Leaf,   [&]() {
@@ -245,7 +257,11 @@ namespace matrix_wm {
 
 			checkPointerCoordinates = [&]() -> bool {
 				XQueryPointer(display, XDefaultRootWindow(display), &root, &child, &root_x, &root_y, &win_x, &win_y, &mask);
-				return x == root_x && y == root_y;
+				if (x == root_x && y == root_y) return true;
+				else {
+					x = y = -1;
+					return false;
+				}
 			};
 		}();
 
@@ -320,32 +336,35 @@ namespace matrix_wm {
 									auto window = event.xunmap.window;
 									auto i = nodes.find(window);
 									if (i != nodes.end()) {
-										auto node = i->second;
-										auto parent = node->parent;
+										Node *node = i->second, *parent = node->parent, *new_active = NULL;
 										if (parent) {
 											auto &children = parent->derived.branch->children;
 											if (children.size() > 2) {
-//												auto new_active = (active == node ? *(node->position == children.begin() ? std::next(node->position) : std::prev(node->position)) : NULL);
-
+												if (active == node) {
+													new_active = *(node->position == children.begin() ? std::next(node->position) : std::prev(node->position));
+													focusNode(new_active);
+													new_active = getFocusedLeaf(new_active);
+												}
 												nodeQuit(node);
-												destructLeaf(node);
-
 												configureChildren(parent);
 
 												refreshNode(parent);
-
-//												if (new_active) {
-//													focusNode(new_active);
-//
-//													refreshLeafFocus(new_active, true);
-//
-//													active
-//												}
 											} else {
 												//...
 											}
 										} else {
 											//...
+										}
+										destructLeaf(node);
+
+										if (new_active) {
+											refreshLeafFocus(new_active, true);
+
+											active = new_active;
+
+											triggerLeafFocus(new_active);
+
+											recordPointerCoordinates();
 										}
 									}
 								}},
