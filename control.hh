@@ -137,14 +137,14 @@ namespace matrix_wm {
 				target->poly(
 						{
 								{Node::Type::Leaf,   [&]() {
-									auto new_grand_parent = target->parent;
+									auto grand_parent = target->parent;
 									auto new_parent = constructBranch();
-									if (new_grand_parent) {
-										auto &grand_children = new_grand_parent->derived.branch->children;
+									if (grand_parent) {
+										auto &grand_children = grand_parent->derived.branch->children;
 										new_parent->position = grand_children.insert(target->position, new_parent);
-										new_parent->parent = new_grand_parent;
 										grand_children.erase(target->position);
-									} else new_parent->parent = NULL;
+									}
+									new_parent->parent = grand_parent;
 									auto &children = new_parent->derived.branch->children;
 									target->position = children.insert(children.end(), target);
 									target->parent = new_parent;
@@ -170,21 +170,21 @@ namespace matrix_wm {
 		};
 
 		auto nodeQuit = [&](Node *const &node) {
-			auto &parent = node->parent;
+			auto parent = node->parent;
 			if (parent) {
 				auto &children = parent->derived.branch->children;
 				children.erase(node->position);
 				node->parent = NULL;
 				if (children.size() == 1) {
-					auto &child = *children.cbegin();
-					children.erase(child->position);
-					auto &grand_parent = parent->parent;
+					auto child = children.front();
+					children.clear();
+					auto grand_parent = parent->parent;
 					if (grand_parent) {
 						auto &grand_children = grand_parent->derived.branch->children;
 						child->position = grand_children.insert(parent->position, child);
-						child->parent = grand_parent;
 						grand_children.erase(parent->position);
-					} else child->parent = NULL;
+					}
+					child->parent = grand_parent;
 				}
 			}
 		};
@@ -275,9 +275,18 @@ namespace matrix_wm {
 				//commands_handlers
 				CommandHandlers(
 						{
-								{"exit", [&]() {
+								{"exit",       [&]() {
 									breakListen();
 									breakLoop();
+								}},
+								{"focus-left", [&]() {
+									if (active && active != view && active->parent->hv == HV::HORIZONTAL) {
+										auto prev = *std::prev(active->position);
+										refreshLeafFocus(active, false);
+										focusNode(prev);
+										refreshLeafFocus(getFocusedLeaf(prev), true);
+										active = prev;
+									}
 								}}
 						}
 				),
@@ -355,11 +364,11 @@ namespace matrix_wm {
 												nodeQuit(node);
 												configureNode(brother, parent->hv, parent->x, parent->y, parent->width, parent->height);
 												refreshNode(brother);
-												delete parent;
 												if (new_active) {
 													focusNode(new_active);
 													new_active = getFocusedLeaf(new_active);
 												}
+												delete parent;
 											}
 										} else {
 											//...
