@@ -196,18 +196,6 @@ namespace matrix_wm {
 			}
 		};
 
-		std::function<Node *(Node *const &)> getFocusedLeaf = [&](Node *const &node) -> Node * {
-			switch (node->node_type) {
-				case Node::Type::Leaf:
-					return node;
-				case Node::Type::Branch:
-					return getFocusedLeaf(*node->derived.branch->focused_position);
-				default:
-					error("node->node_type");
-					return NULL;
-			}
-		};
-
 		std::function<void(Node *const &)> refreshNode = [&](Node *const &node) {
 			node->poly({
 							   {Node::Type::Leaf,   [&]() {
@@ -222,9 +210,14 @@ namespace matrix_wm {
 					   });
 		};
 
-		auto refreshLeafFocus = [&](Node *const &node, const bool &focused) {
-			if (node->node_type == Node::Type::Leaf) {
-				XSetWindowBorder(display, node->derived.leaf->window, focused ? focused_pixel : normal_pixel);
+		auto refreshNodeFocus = [&](Node *node, const bool &to_set = false) {
+			for (auto node_i = node, parent = node_i->parent; parent && parent->derived.branch->focused_position != node_i->position; node_i = parent, parent = node_i->parent) parent->derived.branch->focused_position = node_i->position;
+			for (; node->node_type != Node::Type::Leaf; node = *node->derived.branch->focused_position);
+			if (active != node) {
+				if (active) XSetWindowBorder(display, active->derived.leaf->window, normal_pixel);
+				XSetWindowBorder(display, node->derived.leaf->window, focused_pixel);
+				if (to_set) XSetInputFocus(display, node->derived.leaf->window, RevertToNone, CurrentTime);
+				active = node;
 			}
 		};
 
@@ -240,6 +233,7 @@ namespace matrix_wm {
 
 		refresh();
 
+		std::function<void()> resetPointerCoordinates;
 		std::function<void()> recordPointerCoordinates;
 		std::function<bool()> checkPointerCoordinates;
 		[&]() {
@@ -248,6 +242,10 @@ namespace matrix_wm {
 			Window root, child;
 			int root_x, root_y, win_x, win_y;
 			unsigned int mask;
+
+			resetPointerCoordinates = [&]() {
+				x = y = -1;
+			};
 
 			recordPointerCoordinates = [&]() {
 				XQueryPointer(display, XDefaultRootWindow(display), &root, &child, &root_x, &root_y, &win_x, &win_y, &mask);
@@ -265,12 +263,6 @@ namespace matrix_wm {
 			};
 		}();
 
-		auto triggerLeafFocus = [&](Node *const &node) {
-			if (node->node_type == Node::Type::Leaf) {
-				XSetInputFocus(display, node->derived.leaf->window, RevertToNone, CurrentTime);
-			}
-		};
-
 		callback(
 				//commands_handlers
 				CommandHandlers(
@@ -281,11 +273,9 @@ namespace matrix_wm {
 								}},
 								{"focus-left", [&]() {
 									if (active && active != view && active->parent->hv == HV::HORIZONTAL) {
-										auto prev = *std::prev(active->position);
-										refreshLeafFocus(active, false);
-										focusNode(prev);
-										refreshLeafFocus(getFocusedLeaf(prev), true);
-										active = prev;
+										auto i = std::prev(active->position);
+										if (i == active->parent->derived.branch->children.end()) i = std::prev(i);
+										refreshNodeFocus(*i, true);
 									}
 								}}
 						}
@@ -310,8 +300,6 @@ namespace matrix_wm {
 
 											root = view = node;
 										} else {
-											refreshLeafFocus(active, false);
-
 											if (active == view) {
 												nodeJoin(node, active, FB::FORWARD);
 
@@ -330,13 +318,7 @@ namespace matrix_wm {
 											}
 										}
 
-										focusNode(node);
-
-										refreshLeafFocus(node, true);
-
-										active = node;
-
-										triggerLeafFocus(node);
+										refreshNodeFocus(node, true);
 
 										recordPointerCoordinates();
 									}
@@ -345,45 +327,6 @@ namespace matrix_wm {
 									auto window = event.xunmap.window;
 									auto i = nodes.find(window);
 									if (i != nodes.end()) {
-										Node *node = i->second, *parent = node->parent, *new_active = NULL;
-										if (parent) {
-											auto &children = parent->derived.branch->children;
-											if (children.size() > 2) {
-												if (active == node) {
-													new_active = *(node->position == children.begin() ? std::next(node->position) : std::prev(node->position));
-													focusNode(new_active);
-													new_active = getFocusedLeaf(new_active);
-												}
-												nodeQuit(node);
-												configureChildren(parent);
-												refreshNode(parent);
-											} else {
-												//------------debug here!
-												auto brother = *(node->position == children.begin() ? std::next(node->position) : std::prev(node->position));
-												if (active == node) new_active = brother;
-												nodeQuit(node);
-												configureNode(brother, parent->hv, parent->x, parent->y, parent->width, parent->height);
-												refreshNode(brother);
-												if (new_active) {
-													focusNode(new_active);
-													new_active = getFocusedLeaf(new_active);
-												}
-												delete parent;
-											}
-										} else {
-											//...
-										}
-										destructLeaf(node);
-
-										if (new_active) {
-											refreshLeafFocus(new_active, true);
-
-											active = new_active;
-
-											triggerLeafFocus(new_active);
-
-											recordPointerCoordinates();
-										}
 									}
 								}},
 								{FocusIn,     [&](const XEvent &event) {
@@ -391,15 +334,10 @@ namespace matrix_wm {
 									auto i = nodes.find(window);
 									if (i != nodes.end()) {
 										auto node = i->second;
-										if (node != active && !checkPointerCoordinates()) {
-											if (active) refreshLeafFocus(active, false);
-
-											focusNode(node);
-
-											refreshLeafFocus(node, true);
-
-											active = node;
-										} else if (active) triggerLeafFocus(active);
+										if (node != active) {
+											if (checkPointerCoordinates()) refreshNodeFocus(active, true);
+											else refreshNodeFocus(node);
+										}
 									}
 								}},
 								{EnterNotify, [&](const XEvent &event) {
@@ -407,7 +345,7 @@ namespace matrix_wm {
 									auto i = nodes.find(window);
 									if (i != nodes.end()) {
 										auto node = i->second;
-										if (node != active && !checkPointerCoordinates()) triggerLeafFocus(node);
+										if (node != active && !checkPointerCoordinates()) refreshNodeFocus(node, true);
 									}
 								}}
 						}
