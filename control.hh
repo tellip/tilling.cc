@@ -4,7 +4,7 @@
 #include "main.hh"
 
 namespace matrix_wm {
-	auto control = [&](const std::function<void()> &breakListen, Display *const &display, const std::function<void()> &breakLoop, const auto &callback) {
+	auto control = [&](Display *const &display, const auto &break_, const auto &callback) {
 		unsigned long normal_pixel, focused_pixel;
 		[&](const auto &cp) {
 			normal_pixel = cp(config::normal_color);
@@ -267,10 +267,7 @@ namespace matrix_wm {
 				//commands_handlers
 				CommandHandlers(
 						{
-								{"exit",       [&]() {
-									breakListen();
-									breakLoop();
-								}},
+								{"exit",       break_},
 								{"focus-left", [&]() {
 									if (active && active != view && active->parent->hv == HV::HORIZONTAL) {
 										auto i = std::prev(active->position);
