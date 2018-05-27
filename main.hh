@@ -6,8 +6,6 @@
 #include <iostream>
 #include <list>
 #include <thread>
-#include <type_traits>
-#include <tuple>
 #include <unistd.h>
 #include <unordered_map>
 #include <X11/Xlib.h>

@@ -18,10 +18,10 @@ namespace matrix_wm {
 					//loopEvents
 					[&](const auto &break_, const long &root_event_masks, const long &leaf_event_masks, const EventHandlers &handlers, const auto &callback) {
 						if (!looping) {
+							looping = true;
 							XSelectInput(display, XDefaultRootWindow(display), root_event_masks);
-							auto thread_loop = std::thread([&]() {
+							auto thread = std::thread([&]() {
 								try {
-									looping = true;
 									/**
 									 * non-blocking
 									 */
@@ -49,12 +49,14 @@ namespace matrix_wm {
 							callback(
 									//joinThread
 									[&](const auto &callback) {
-										thread_loop.join();
+										thread.join();
 										callback(
 												//clean
 												[&]() {
-													display_closed = true;
-													XCloseDisplay(display);
+													if (!display_closed) {
+														display_closed = true;
+														XCloseDisplay(display);
+													}
 												}
 										);
 									}
@@ -71,7 +73,10 @@ namespace matrix_wm {
 					}
 			);
 		} catch (...) {
-			if (!display_closed) XCloseDisplay(display);
+			if (!display_closed) {
+				display_closed = true;
+				XCloseDisplay(display);
+			}
 			throw true;
 		}
 	};

@@ -20,9 +20,9 @@ namespace matrix_wm {
 					//listenCommands
 					[&](const auto &break_, const CommandHandlers &handlers, const auto &callback) {
 						if (!listening) {
-							auto thread_listen = std::thread([&]() {
+							listening = true;
+							auto thread = std::thread([&]() {
 								try {
-									listening = true;
 									while (listening) {
 										if (listen(sock_server, SOMAXCONN) < 0) error("listen");
 										sockaddr_in sai_client;
@@ -38,12 +38,13 @@ namespace matrix_wm {
 											close(sock_client);
 											if (strcmp(buffer, "-")) {
 												auto i = handlers.find(buffer);
-												if (i != handlers.end()) {
-													i->second();
-												}
+												if (i != handlers.end()) i->second();
 											}
 										} catch (...) {
-											if (!sock_client_closed) close(sock_client);
+											if (!sock_client_closed) {
+												sock_client_closed = true;
+												close(sock_client);
+											}
 											throw true;
 										}
 									}
@@ -55,11 +56,13 @@ namespace matrix_wm {
 							callback(
 									//joinThread
 									[&](const auto &callback) {
-										thread_listen.join();
+										thread.join();
 										callback(
 												[&]() {
-													sock_server_closed = true;
-													close(sock_server);
+													if (!sock_server_closed) {
+														sock_server_closed = true;
+														close(sock_server);
+													}
 												}
 										);
 									}
@@ -75,7 +78,10 @@ namespace matrix_wm {
 					}
 			);
 		} catch (...) {
-			if (!sock_server_closed) close(sock_server);
+			if (!sock_server_closed) {
+				sock_server_closed = true;
+				close(sock_server);
+			}
 			throw true;
 		}
 	};
