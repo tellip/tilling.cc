@@ -9,8 +9,8 @@ int main() {
 			};
 			matrix_wm::control(display, break_, [&](const auto &command_handlers, const auto &root_event_masks, const auto &leaf_event_masks, const auto &event_handlers) {
 				try {
-					listenCommands(break_, command_handlers, [&](const auto &joinListen) {
-						loopEvents(break_, root_event_masks, leaf_event_masks, event_handlers, [&](const auto &joinLoop) {
+					listenCommands(command_handlers, [&](const auto &joinListen) {
+						loopEvents(root_event_masks, leaf_event_masks, event_handlers, [&](const auto &joinLoop) {
 							joinListen([&](const auto &cleanSock) {
 								joinLoop([&](const auto &cleanConn) {
 									cleanSock();

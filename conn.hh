@@ -16,34 +16,30 @@ namespace matrix_wm {
 			callback(
 					display_substitute,
 					//loopEvents
-					[&](const auto &break_, const long &root_event_masks, const long &leaf_event_masks, const EventHandlers &handlers, const auto &callback) {
+					[&](const long &root_event_masks, const long &leaf_event_masks, const EventHandlers &handlers, const auto &callback) {
 						if (!looping) {
 							looping = true;
 							XSelectInput(display, XDefaultRootWindow(display), root_event_masks);
 							auto thread = std::thread([&]() {
-								try {
-									/**
-									 * non-blocking
-									 */
-									while (looping) {
-										XEvent event;
-										if (XCheckMaskEvent(display, root_event_masks | leaf_event_masks, &event)) {
-											auto i = handlers.find(event.type);
-											if (i != handlers.end()) i->second(event);
-										}
+								/**
+								 * non-blocking
+								 */
+								while (looping) {
+									XEvent event;
+									if (XCheckMaskEvent(display, root_event_masks | leaf_event_masks, &event)) {
+										auto i = handlers.find(event.type);
+										if (i != handlers.end()) i->second(event);
 									}
-//									/**
-//									 * blocking
-//									 */
-//									while (looping) {
-//										XEvent event;
-//										if (!XNextEvent(display, &event)) error("XNextEvent");
-//										auto i = handlers.find(event.type);
-//										if (i != handlers.end()) i->second(event);
-//									}
-								} catch (...) {
-									break_();
 								}
+//								/**
+//								 * blocking
+//								 */
+//								while (looping) {
+//									XEvent event;
+//									if (!XNextEvent(display, &event)) error("XNextEvent");
+//									auto i = handlers.find(event.type);
+//									if (i != handlers.end()) i->second(event);
+//								}
 							});
 
 							callback(

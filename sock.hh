@@ -18,38 +18,34 @@ namespace matrix_wm {
 			bool listening = false;
 			callback(
 					//listenCommands
-					[&](const auto &break_, const CommandHandlers &handlers, const auto &callback) {
+					[&](const CommandHandlers &handlers, const auto &callback) {
 						if (!listening) {
 							listening = true;
 							auto thread = std::thread([&]() {
-								try {
-									while (listening) {
-										if (listen(sock_server, SOMAXCONN) < 0) error("listen");
-										sockaddr_in sai_client;
-										socklen_t len = sizeof(sai_client);
-										auto sock_client = accept(sock_server, (sockaddr *) &sai_client, &len);
-										if (sock_client < 0) error("accept");
-										auto sock_client_closed = false;
-										try {
-											char buffer[256];
-											bzero(buffer, sizeof(buffer));
-											if (read(sock_client, buffer, sizeof(buffer)) < 0) error("read");
+								while (listening) {
+									if (listen(sock_server, SOMAXCONN) < 0) error("listen");
+									sockaddr_in sai_client;
+									socklen_t len = sizeof(sai_client);
+									auto sock_client = accept(sock_server, (sockaddr *) &sai_client, &len);
+									if (sock_client < 0) error("accept");
+									auto sock_client_closed = false;
+									try {
+										char buffer[256];
+										bzero(buffer, sizeof(buffer));
+										if (read(sock_client, buffer, sizeof(buffer)) < 0) error("read");
+										sock_client_closed = true;
+										close(sock_client);
+										if (strcmp(buffer, "-")) {
+											auto i = handlers.find(buffer);
+											if (i != handlers.end()) i->second();
+										}
+									} catch (...) {
+										if (!sock_client_closed) {
 											sock_client_closed = true;
 											close(sock_client);
-											if (strcmp(buffer, "-")) {
-												auto i = handlers.find(buffer);
-												if (i != handlers.end()) i->second();
-											}
-										} catch (...) {
-											if (!sock_client_closed) {
-												sock_client_closed = true;
-												close(sock_client);
-											}
-											throw true;
 										}
+										throw true;
 									}
-								} catch (...) {
-									break_();
 								}
 							});
 
