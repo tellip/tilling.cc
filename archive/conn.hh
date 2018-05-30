@@ -16,7 +16,7 @@ namespace matrix_wm {
 			callback(
 					display_substitute,
 					//loopEvents
-					[&](const long &root_event_masks, const long &leaf_event_masks, const EventHandlers &handlers, const auto &callback) {
+					[&](const long &root_event_masks, const long &leaf_event_masks, const auto &callback) {
 						if (!looping) {
 							looping = true;
 							XSelectInput(display, XDefaultRootWindow(display), root_event_masks);
@@ -27,8 +27,8 @@ namespace matrix_wm {
 								while (looping) {
 									XEvent event;
 									if (XCheckMaskEvent(display, root_event_masks | leaf_event_masks, &event)) {
-										auto i = handlers.find(event.type);
-										if (i != handlers.end()) i->second(event);
+										event_queue.push(std::move(event));
+										sendSock("e-");
 									}
 								}
 //								/**

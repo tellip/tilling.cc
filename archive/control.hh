@@ -284,7 +284,8 @@ namespace matrix_wm {
 				//event_handlers
 				EventHandlers(
 						{
-								{MapNotify,   [&](const XEvent &event) {
+								{MapNotify,   [&](const XEvent &e) {
+									auto event = e;
 									auto xmap = event.xmap;
 									auto window = xmap.window;
 									if (nodes.find(window) == nodes.end() && !xmap.override_redirect) {
@@ -296,28 +297,28 @@ namespace matrix_wm {
 											refreshNode(node);
 
 											root = view = node;
-										} else {
-											if (active == view) {
-												nodeJoin(node, active, FB::FORWARD);
-
-												configureNode(node->parent, display_hv, -config::border_width, -config::border_width, display_width + config::border_width * 2, display_height + config::border_width * 2);
-
-												refreshNode(node->parent);
-
-												view = node->parent;
-											} else {
-												nodeJoin(node, active->parent, FB::FORWARD);
-												nodeMove(node, active->position, FB::FORWARD);
-
-												configureChildren(node->parent);
-
-												refreshNode(node->parent);
-											}
-										}
-
+										} /*else {*/
+//											if (active == view) {
+//												nodeJoin(node, active, FB::FORWARD);
+//
+//												configureNode(node->parent, display_hv, -config::border_width, -config::border_width, display_width + config::border_width * 2, display_height + config::border_width * 2);
+//
+//												refreshNode(node->parent);
+//
+//												view = node->parent;
+//											} else {
+//												nodeJoin(node, active->parent, FB::FORWARD);
+//												nodeMove(node, active->position, FB::FORWARD);
+//
+//												configureChildren(node->parent);
+//
+//												refreshNode(node->parent);
+//											}
+//										}
+//
 										refreshNodeFocus(node, true);
 
-										recordPointerCoordinates();
+//										recordPointerCoordinates();
 									}
 								}},
 								{UnmapNotify, [&](const XEvent &event) {
@@ -330,19 +331,19 @@ namespace matrix_wm {
 									auto window = event.xfocus.window;
 									auto i = nodes.find(window);
 									if (i != nodes.end()) {
-										auto node = i->second;
-										if (node != active) {
-											if (checkPointerCoordinates()) refreshNodeFocus(active, true);
-											else refreshNodeFocus(node);
-										}
+//										auto node = i->second;
+//										if (node != active) {
+//											if (checkPointerCoordinates()) refreshNodeFocus(active, true);
+//											else refreshNodeFocus(node);
+//										}
 									}
 								}},
 								{EnterNotify, [&](const XEvent &event) {
 									auto window = event.xcrossing.window;
 									auto i = nodes.find(window);
 									if (i != nodes.end()) {
-										auto node = i->second;
-										if (node != active && !checkPointerCoordinates()) refreshNodeFocus(node, true);
+//										auto node = i->second;
+//										if (node != active && !checkPointerCoordinates()) refreshNodeFocus(node, true);
 									}
 								}}
 						}

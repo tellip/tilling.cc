@@ -1,7 +1,5 @@
 #pragma once
 
-#include <netinet/in.h>
-
 namespace matrix_wm {
 	namespace config {
 		const char *const socket_host = "127.0.0.1";

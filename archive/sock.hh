@@ -14,37 +14,39 @@ namespace matrix_wm {
 			sai_server.sin_addr.s_addr = inet_addr(config::socket_host);
 			sai_server.sin_port = htons(socket_port);
 			if (bind(sock_server, (sockaddr *) &sai_server, sizeof(sai_server)) < 0) error("bind");
+			if (listen(sock_server, SOMAXCONN) < 0) error("listen");
 
 			bool listening = false;
 			callback(
 					//listenCommands
-					[&](const CommandHandlers &handlers, const auto &callback) {
+					[&](const CommandHandlers &command_handlers, const EventHandlers &event_handlers, const auto &callback) {
 						if (!listening) {
 							listening = true;
 							auto thread = std::thread([&]() {
 								while (listening) {
-									if (listen(sock_server, SOMAXCONN) < 0) error("listen");
 									sockaddr_in sai_client;
 									socklen_t len = sizeof(sai_client);
 									auto sock_client = accept(sock_server, (sockaddr *) &sai_client, &len);
 									if (sock_client < 0) error("accept");
-									auto sock_client_closed = false;
+									char buffer[256];
 									try {
-										char buffer[256];
 										bzero(buffer, sizeof(buffer));
 										if (read(sock_client, buffer, sizeof(buffer)) < 0) error("read");
-										sock_client_closed = true;
-										close(sock_client);
-										if (strcmp(buffer, "-")) {
-											auto i = handlers.find(buffer);
-											if (i != handlers.end()) i->second();
-										}
 									} catch (...) {
-										if (!sock_client_closed) {
-											sock_client_closed = true;
-											close(sock_client);
-										}
+										close(sock_client);
 										throw true;
+									}
+									close(sock_client);
+									if (strcmp(buffer, "-")) {
+										if (buffer[0] == 'c' && buffer[1] == '-') {
+											auto i = command_handlers.find(&buffer[2]);
+											if (i != command_handlers.end()) i->second();
+										} else if (buffer[0] == 'e' && buffer[1] == '-') {
+											auto event = event_queue.front();
+											event_queue.pop();
+											auto i = event_handlers.find(event.type);
+											if (i != event_handlers.end()) i->second(event);
+										}
 									}
 								}
 							});

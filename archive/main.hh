@@ -5,12 +5,14 @@
 #include <functional>
 #include <iostream>
 #include <list>
+#include <queue>
+#include <sstream>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
 #include <X11/Xlib.h>
 
-#include "config.hh"
+#include "../config.hh"
 
 namespace matrix_wm {
 	typedef std::unordered_map<
@@ -36,7 +38,7 @@ namespace matrix_wm {
 		return config::socket_port_base + i;
 	}();
 
-	auto sendSock = [&](const char *const &msg) {
+	auto sendSock = [&](const std::string &msg) {
 		auto sock_server = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 		if (sock_server < 0) matrix_wm::error("socket");
 		else {
@@ -47,11 +49,13 @@ namespace matrix_wm {
 			sai_server.sin_port = htons(socket_port);
 			if (connect(sock_server, (sockaddr *) &sai_server, sizeof(sai_server)) < 0) matrix_wm::error("connect");
 			else {
-				if (write(sock_server, msg, strlen(msg)) < 0) matrix_wm::error("write");
+				if (write(sock_server, msg.c_str(), msg.size()) < 0) matrix_wm::error("write");
 			}
 			close(sock_server);
 		}
 	};
+
+	std::queue<XEvent> event_queue;
 }
 
 #include "sock.hh"
