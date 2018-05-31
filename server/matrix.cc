@@ -12,19 +12,21 @@ namespace wm {
 				_xia_delete_window(XInternAtom(display, "WM_DELETE_WINDOW", False)),
 				event_handlers(
 						{
-								{MapNotify, [&](const XEvent &event) {
+								{MapNotify, [&](const XEvent &event, const auto &done) {
 									if (!event.xmap.override_redirect) {
 										auto i = _leaves.find(event.xmap.window);
 										if (i == _leaves.end()) {
 											auto leaf = new node::Leaf(this, event.xmap.window);
 											if (!_focus) {
+												std::cout << _display_height << '\n';
 												leaf->configure(_display_hv, -config::border_width, -config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2);
 												leaf->refresh();
-//												_root = _view = leaf;
+												_root = _view = leaf;
 											}
-//											leaf->focus(true);
+											leaf->focus(true);
 										} else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
 									}
+									done();
 								}}
 						}
 				) {
@@ -83,6 +85,7 @@ namespace wm {
 					Node(space),
 					_window(window),
 					_iter_leaves(space->_leaves.insert(std::make_pair(window, this)).first) {
+				XMapWindow(space->_display, window);
 				XSetWindowBorderWidth(space->_display, window, config::border_width);
 				XSelectInput(space->_display, window, leaf_event_mask);
 			}
@@ -92,7 +95,6 @@ namespace wm {
 			}
 
 			void Leaf::refresh() {
-//				std::cout << _width - config::border_width * 2 << "------\n";
 				XMoveResizeWindow(_space->_display, _window, _x, _y, _width - config::border_width * 2, _height - config::border_width * 2);
 			}
 

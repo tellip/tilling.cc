@@ -8,7 +8,7 @@ int main() {
 			loop(command_handlers, root_event_mask, leaf_event_mask, event_handlers, [&](const auto &break_, const auto &handling_event_command_name, const auto &handleEvent, const auto &join) {
 				callback(break_, handling_event_command_name, handleEvent);
 				join();
-//				clean();
+				clean();
 			});
 		});
 	});

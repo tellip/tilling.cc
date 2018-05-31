@@ -5,7 +5,7 @@
 namespace wm {
 	typedef std::unordered_map<
 			int,
-			std::function<void(const XEvent &)>
+			std::function<void(const XEvent &, const std::function<void()> &)>
 	> EventHandlers;
 	typedef std::unordered_map<
 			std::string,
@@ -28,6 +28,7 @@ namespace wm {
 
 		const auto display = XOpenDisplay(NULL);
 		if (display == NULL) error("XOpenDisplay");
+		XSync(display, false);
 
 		callback(
 				display,
@@ -54,13 +55,13 @@ namespace wm {
 					});
 
 					XSelectInput(display, XDefaultRootWindow(display), root_event_mask);
-					std::queue<XEvent> event_queue;
+					XEvent event;
+					bool handling = false;
 					const std::string handling_event_command_name = "handle-event";
 					auto thread_x = std::thread([&]() {
 						while (looping) {
-							XEvent event;
-							if (XCheckMaskEvent(display, root_event_mask | leaf_event_mask, &event)) {
-								event_queue.push(event);
+							if (!handling && XCheckMaskEvent(display, root_event_mask | leaf_event_mask, &event)) {
+								handling = true;
 								sendSock(handling_event_command_name);
 							}
 						}
@@ -77,16 +78,17 @@ namespace wm {
 							handling_event_command_name,
 							//handleEvent
 							[&]() {
-								auto event = std::move(event_queue.front());
-								event_queue.pop();
 								auto i = event_handlers.find(event.type);
-								if (i != event_handlers.end()) i->second(event);
+								if (i != event_handlers.end()) {
+									i->second(event, [&]() {
+										handling = false;
+									});
+								} else handling = false;
 							},
 							//join
 							[&]() {
 								thread_sock.join();
 								thread_x.join();
-								std::cout << "-----joined-----\n";
 							}
 					);
 				},
