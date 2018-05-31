@@ -4,10 +4,17 @@
 namespace wm {
 	namespace matrix {
 
+		unsigned long Space::_colorPixel(const char *const &cc) {
+			auto cm = DefaultColormap(_display, XDefaultScreen(_display));
+			XColor x_color;
+			if (XAllocNamedColor(_display, cm, cc, &x_color, &x_color) == 0) error("XAllocNamedColor");
+			return x_color.pixel;
+		}
+
 		Space::Space(Display *const &display) :
 				_display(display),
-				_normal_pixel(_colorPixel(display, config::normal_color)),
-				_focus_pixel(_colorPixel(display, config::normal_color)),
+				_normal_pixel(_colorPixel(config::normal_color)),
+				_focus_pixel(_colorPixel(config::normal_color)),
 				_xia_protocols(XInternAtom(display, "WM_PROTOCOLS", False)),
 				_xia_delete_window(XInternAtom(display, "WM_DELETE_WINDOW", False)),
 				event_handlers(
@@ -22,8 +29,10 @@ namespace wm {
 												leaf->configure(_display_hv, -config::border_width, -config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2);
 												leaf->refresh();
 												_root = _view = leaf;
+											} else if (_focus == _view) {
+
 											}
-											leaf->focus(true);
+											focus(leaf, true);
 										} else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
 									}
 									done();
@@ -49,11 +58,18 @@ namespace wm {
 			}
 		}
 
-		unsigned long Space::_colorPixel(Display *const &display, const char *const &cc) {
-			auto cm = DefaultColormap(display, XDefaultScreen(display));
-			XColor x_color;
-			if (XAllocNamedColor(display, cm, cc, &x_color, &x_color) == 0) error("XAllocNamedColor");
-			return x_color.pixel;
+		void Space::focus(Node *const &node, const bool &to_set) {
+			for (auto i = node; i->_parent && i->_parent->_active_iter != i->_iter_parent; ({
+				i->_parent->_active_iter = i->_iter_parent;
+				i = i->_parent;
+			}));
+			auto active = node->getActiveLeaf();
+			if (_focus != active) {
+				if (_focus) XSetWindowBorder(_display, active->_window, _normal_pixel);
+				XSetWindowBorder(_display, active->_window, _focus_pixel);
+				if (to_set) XSetInputFocus(_display, active->_window, RevertToNone, CurrentTime);
+				_focus = active;
+			}
 		}
 
 		Node::Node(Space *const &space) : _space(space) {}
@@ -66,18 +82,6 @@ namespace wm {
 			_y = y;
 			_width = width;
 			_height = height;
-		}
-
-		void Node::focus(const bool &to_set) {
-			_activate();
-			getActiveLeaf()->refreshFocus(to_set);
-		}
-
-		void Node::_activate() {
-			if (_parent && _parent->activeIter() != _iter_parent) {
-				_parent->activateChild(this);
-				_parent->_activate();
-			}
 		}
 
 		namespace node {
@@ -100,15 +104,6 @@ namespace wm {
 
 			node::Leaf *Leaf::getActiveLeaf() {
 				return this;
-			}
-
-			void Leaf::refreshFocus(const bool &to_set) {
-				if (_space->_focus != this) {
-					if (_space->_focus) XSetWindowBorder(_space->_display, _space->_focus->_window, _space->_normal_pixel);
-					XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
-					if (to_set) XSetInputFocus(_space->_display, _window, RevertToNone, CurrentTime);
-					_space->_focus = this;
-				}
 			}
 
 			Branch::Branch(Space *const &space) : Node(space) {}
@@ -139,10 +134,6 @@ namespace wm {
 						break;
 					}
 				}
-			}
-
-			void Branch::activateChild(Node *const &child) {
-				if (child->parent() == this) _active_iter = child->iterParent();
 			}
 		}
 	}

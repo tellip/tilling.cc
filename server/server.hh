@@ -28,7 +28,6 @@ namespace wm {
 
 		const auto display = XOpenDisplay(NULL);
 		if (display == NULL) error("XOpenDisplay");
-		XSync(display, false);
 
 		callback(
 				display,

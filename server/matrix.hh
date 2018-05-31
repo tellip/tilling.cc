@@ -24,6 +24,9 @@ namespace wm {
 			Node *_root, *_view;
 			node::Leaf *_focus;
 			std::unordered_map<Window, node::Leaf *> _leaves;
+
+			unsigned long _colorPixel(const char *const &);
+
 		public:
 			const EventHandlers event_handlers;
 
@@ -31,8 +34,7 @@ namespace wm {
 
 			void refresh();
 
-		private:
-			static unsigned long _colorPixel(Display *const &, const char *const &);
+			void focus(Node *const &, const bool &);
 
 			friend Node;
 			friend node::Branch;
@@ -63,13 +65,9 @@ namespace wm {
 
 			virtual void refresh()=0;
 
-			void focus(const bool &);
-
-		protected:
-			void _activate();
-
-		public:
 			virtual node::Leaf *getActiveLeaf()=0;
+
+			friend Space;
 		};
 
 		namespace node {
@@ -85,7 +83,7 @@ namespace wm {
 
 				node::Leaf *getActiveLeaf();
 
-				void refreshFocus(const bool &);
+				friend Space;
 			};
 
 			class Branch : public Node {
@@ -104,7 +102,7 @@ namespace wm {
 
 				void configureChildren();
 
-				void activateChild(Node *const &);
+				friend Space;
 			};
 		}
 
