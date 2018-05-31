@@ -14,8 +14,10 @@ namespace wm {
 			_display_height = (unsigned int) XDisplayHeight(d, XDefaultScreen(d));
 			_display_hv = HV(_display_width > _display_height);
 
-			_root = _view = _active = NULL;
+			_root = _view = _focus = NULL;
 		}
+
+		Space::~Space() {}
 
 		unsigned long Space::_colorPixel(Display *const &display, const char *const &cc) {
 			auto cm = DefaultColormap(display, XDefaultScreen(display));

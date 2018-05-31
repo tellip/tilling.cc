@@ -189,13 +189,6 @@ namespace wm {
 			}
 		};
 
-		std::function<void(Node *const &)> focusNode = [&](Node *const &node) {
-			if (node->parent && node->parent->derived.branch->focused_position != node->position) {
-				node->parent->derived.branch->focused_position = node->position;
-				focusNode(node->parent);
-			}
-		};
-
 		std::function<void(Node *const &)> refreshNode = [&](Node *const &node) {
 			node->poly({
 							   {Node::Type::Leaf,   [&]() {

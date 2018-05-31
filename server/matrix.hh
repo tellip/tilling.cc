@@ -23,12 +23,14 @@ namespace wm {
 			HV _display_hv;
 
 			Node *_root, *_view;
-			node::Leaf *_active;
+			node::Leaf *_focus;
 			std::unordered_map<Window, Node *> _leaves;
 
 		public:
 
 			Space(Display *const &);
+
+			virtual ~Space() = 0;
 
 		private:
 			static unsigned long _colorPixel(Display *const &, const char *const &);
@@ -39,7 +41,7 @@ namespace wm {
 			Space *_space;
 
 			Node *_parent;
-			std::list<Node *>::iterator _position;
+			std::list<Node *>::iterator _iter_parent;
 			HV _hv;
 			int _x, _y;
 			unsigned int _width, _height;
@@ -50,11 +52,13 @@ namespace wm {
 
 		namespace node {
 			class Branch : public Node {
-
+				const Window _window;
+				const std::unordered_map<Window, Leaf *>::iterator _iter_leaves;
 			};
 
 			class Leaf : public Node {
-
+				std::list<Node *> _children;
+				std::list<Node *>::iterator _active_iter;
 			};
 		}
 
