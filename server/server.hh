@@ -34,7 +34,6 @@ namespace wm {
 				//loop
 				[&](const CommandHandlers &command_handlers, const long &root_event_mask, const long &leaf_event_mask, const EventHandlers &event_handlers, const auto &callback) {
 					bool looping = true;
-
 					auto thread_sock = std::thread([&]() {
 						while (looping) {
 							sockaddr_in sai_client;
@@ -87,6 +86,7 @@ namespace wm {
 							[&]() {
 								thread_sock.join();
 								thread_x.join();
+								std::cout << "-----joined-----\n";
 							}
 					);
 				},
