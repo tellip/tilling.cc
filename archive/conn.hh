@@ -3,7 +3,7 @@
 #include <X11/Xlib.h>
 #include "main.hh"
 
-namespace matrix_wm {
+namespace wm {
 	auto conn = [&](const auto &callback) {
 		auto display = XOpenDisplay(NULL);
 		if (display == NULL) error("XOpenDisplay");

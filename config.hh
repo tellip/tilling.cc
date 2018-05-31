@@ -1,6 +1,6 @@
 #pragma once
 
-namespace matrix_wm {
+namespace wm {
 	namespace config {
 		const char *const socket_host = "127.0.0.1";
 		const in_port_t socket_port_base = 2056;

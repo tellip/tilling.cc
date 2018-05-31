@@ -2,7 +2,7 @@
 
 #include "main.hh"
 
-namespace matrix_wm {
+namespace wm {
 	auto sock = [&](const auto &callback) {
 		auto sock_server = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 		if (sock_server < 0) error("socket");

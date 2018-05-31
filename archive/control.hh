@@ -3,7 +3,7 @@
 #include <X11/Xlib.h>
 #include "main.hh"
 
-namespace matrix_wm {
+namespace wm {
 	auto control = [&](Display *const &display, const auto &break_, const auto &callback) {
 		unsigned long normal_pixel, focused_pixel;
 		[&](const auto &cp) {
