@@ -39,7 +39,7 @@ namespace wm {
                 _pointer_coordinates(*this),
                 event_handlers(
                         {
-                                {MapNotify, [&](const XEvent &event, const auto &done) {
+                                {MapNotify,   [&](const XEvent &event, const auto &done) {
                                     if (!event.xmap.override_redirect) {
                                         auto i = _leaves.find(event.xmap.window);
                                         if (i == _leaves.end()) {
@@ -64,14 +64,19 @@ namespace wm {
                                     }
                                     done();
                                 }},
-                                {FocusIn,   [&](const XEvent &event, const auto &done) {
+                                {FocusIn,     [&](const XEvent &event, const auto &done) {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
                                         auto node = i->second;
-                                        if (_focus != node) {
-                                            if (_pointer_coordinates.check()) focus(_focus);
-                                            else focus(node);
-                                        }
+                                        if (_focus != node) focus(_focus);
+                                    }
+                                    done();
+                                }},
+                                {EnterNotify, [&](const XEvent &event, const auto &done) {
+                                    auto i = _leaves.find(event.xcrossing.window);
+                                    if (i != _leaves.end()) {
+                                        auto node = i->second;
+                                        if (_focus != node && !_pointer_coordinates.check()) focus(node);
                                     }
                                     done();
                                 }}
@@ -105,9 +110,9 @@ namespace wm {
             if (_focus != active) {
                 if (_focus) XSetWindowBorder(_display, _focus->_window, _normal_pixel);
                 XSetWindowBorder(_display, active->_window, _focus_pixel);
-                XSetInputFocus(_display, active->_window, RevertToNone, CurrentTime);
                 _focus = active;
-            } else XSetInputFocus(_display, _focus->_window, RevertToNone, CurrentTime);
+                XSetInputFocus(_display, active->_window, RevertToParent, CurrentTime);
+            } else XSetInputFocus(_display, _focus->_window, RevertToParent, CurrentTime);
         }
 
         node::Branch *Space::join(wm::matrix::Node *const &node, wm::matrix::Node *const &target, const wm::matrix::FB &fb) {
