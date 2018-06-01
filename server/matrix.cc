@@ -27,7 +27,10 @@ namespace wm {
 
         bool Space::_PointerCoordinates::check() {
             _refresh();
-            return _x == _root_x && _y == _root_y;
+            return _x == _root_x && _y == _root_y && ({
+                _x = _y = -1;
+                true;
+            });
         }
 
         Space::Space(Display *const &display) :
@@ -58,8 +61,6 @@ namespace wm {
                                                 parent->configureChildren();
                                                 parent->refresh();
                                             }
-                                            focus(leaf);
-                                            _pointer_coordinates.record();
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
                                     }
                                     done();
@@ -67,16 +68,20 @@ namespace wm {
                                 {FocusIn,     [&](const XEvent &event, const auto &done) {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
-                                        auto node = i->second;
-                                        if (_focus != node) focus(_focus);
+                                        auto leaf = i->second;
+                                        if (_focus != leaf) {
+                                            if (_focus) XSetWindowBorder(_display, _focus->_window, _normal_pixel);
+                                            XSetWindowBorder(_display, leaf->_window, _focus_pixel);
+                                            _focus = leaf;
+                                        }
                                     }
                                     done();
                                 }},
                                 {EnterNotify, [&](const XEvent &event, const auto &done) {
                                     auto i = _leaves.find(event.xcrossing.window);
                                     if (i != _leaves.end()) {
-                                        auto node = i->second;
-                                        if (_focus != node && !_pointer_coordinates.check()) focus(node);
+                                        auto leaf = i->second;
+                                        focus(leaf);
                                     }
                                     done();
                                 }}
@@ -106,13 +111,8 @@ namespace wm {
                 i->_parent->_active_iter = i->_iter_parent;
                 i = i->_parent;
             }));
-            auto active = node->getActiveLeaf();
-            if (_focus != active) {
-                if (_focus) XSetWindowBorder(_display, _focus->_window, _normal_pixel);
-                XSetWindowBorder(_display, active->_window, _focus_pixel);
-                _focus = active;
-                XSetInputFocus(_display, active->_window, RevertToParent, CurrentTime);
-            } else XSetInputFocus(_display, _focus->_window, RevertToParent, CurrentTime);
+            auto leaf = node->getActiveLeaf();
+            XSetInputFocus(_display, leaf->_window, RevertToNone, CurrentTime);
         }
 
         node::Branch *Space::join(wm::matrix::Node *const &node, wm::matrix::Node *const &target, const wm::matrix::FB &fb) {
