@@ -6,6 +6,6 @@ namespace wm {
 		const in_port_t socket_port_base = 2056;
 
 		const unsigned int border_width = 40;
-		const char *const normal_color = "Black", *const focused_color = "#466BB0";
+		const char *const normal_color = "Black", *const focus_color = "#466BB0";
 	}
 }

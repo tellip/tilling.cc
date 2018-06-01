@@ -4,126 +4,157 @@
 #include "main.hh"
 
 namespace wm {
-	namespace matrix {
-		enum HV {
-			HORIZONTAL = true, VERTICAL = false
-		};
+    namespace matrix {
+        enum HV {
+            HORIZONTAL = true, VERTICAL = false
+        };
 
-		enum FB {
-			FORWARD = true, BACKWARD = false
-		};
+        enum FB {
+            FORWARD = true, BACKWARD = false
+        };
 
-		class Space {
-			Display *const _display;
-			const unsigned long _normal_pixel, _focus_pixel;
-			const Atom _xia_protocols, _xia_delete_window;
+        class Space {
+            Display *const _display;
+            const unsigned long _normal_pixel, _focus_pixel;
+            const Atom _xia_protocols, _xia_delete_window;
 
-			unsigned int _display_width, _display_height;
-			HV _display_hv;
+            unsigned int _display_width, _display_height;
+            HV _display_hv;
 
-			Node *_root, *_view;
-			node::Leaf *_focus;
-			std::unordered_map<Window, node::Leaf *> _leaves;
+            Node *_root, *_view;
+            node::Leaf *_focus;
+            std::unordered_map<Window, node::Leaf *> _leaves;
 
-			unsigned long _colorPixel(const char *const &);
+            unsigned long _colorPixel(const char *const &);
 
-		public:
-			const EventHandlers event_handlers;
+            class _PointerCoordinates {
+                const Space &_host;
 
-			Space(Display *const &);
+                int _x, _y;
 
-			void refresh();
+                Window _root, _child;
+                int _root_x, _root_y, _win_x, _win_y;
+                unsigned int _mask;
 
-			void focus(Node *const &, const bool &);
+                void _refresh();
 
-			friend Node;
-			friend node::Branch;
-			friend node::Leaf;
-		};
+            public:
+                explicit _PointerCoordinates(const Space &);
 
-		class Node {
-		protected:
-			Space *const _space;
+                void record();
 
-			node::Branch *_parent;
+                bool check();
+            };
 
-			std::list<Node *>::iterator _iter_parent;
-			HV _hv;
-			int _x, _y;
-			unsigned int _width, _height;
+            _PointerCoordinates _pointer_coordinates;
 
-		public:
-			inline const typeof(_parent) &parent() const { return _parent; }
+        public:
+            const server::EventHandlers event_handlers;
 
-			inline const typeof(_iter_parent) &iterParent() const { return _iter_parent; }
+            explicit Space(Display *const &);
 
-			Node(Space *const &);
+            void refresh();
 
-			virtual ~Node() = 0;
+            void focus(Node *const &);
 
-			virtual void configure(const HV &, const int &, const int &, const unsigned int &, const unsigned int &);
+            node::Branch *join(Node *const &, Node *const &, const FB &);
 
-			virtual void refresh()=0;
+            friend Node;
+            friend node::Branch;
+            friend node::Leaf;
+        };
 
-			virtual node::Leaf *getActiveLeaf()=0;
+        class Node {
+        protected:
+            Space *const _space;
 
-			friend Space;
-		};
+            node::Branch *_parent;
 
-		namespace node {
-			class Leaf : public Node {
-				const Window _window;
-				const std::unordered_map<Window, Leaf *>::iterator _iter_leaves;
-			public:
-				Leaf(Space *const &, const Window &);
+            std::list<Node *>::iterator _iter_parent;
+            HV _hv;
+            int _x, _y;
+            unsigned int _width, _height;
 
-				~Leaf();
+        public:
+            explicit Node(Space *const &);
 
-				void refresh();
+            virtual ~Node() = 0;
 
-				node::Leaf *getActiveLeaf();
+            virtual void configure(const HV &, const int &, const int &, const unsigned int &, const unsigned int &);
 
-				friend Space;
-			};
+            virtual void refresh()=0;
 
-			class Branch : public Node {
-				std::list<Node *> _children;
-				std::list<Node *>::iterator _active_iter;
-			public:
-				inline const typeof(_active_iter) &activeIter() const { return _active_iter; };
+            virtual node::Leaf *getActiveLeaf()=0;
 
-				Branch(Space *const &);
+        protected:
+            virtual node::Branch *_receive(Node *const &, const FB &)=0;
 
-				void configure(const HV &, const int &, const int &, const unsigned int &, const unsigned int &);
+            friend Space;
+            friend node::Leaf;
+            friend node::Branch;
+        };
 
-				void refresh();
+        namespace node {
+            class Leaf : public Node {
+                const Window _window;
+                const std::unordered_map<Window, Leaf *>::iterator _iter_leaves;
+            public:
+                Leaf(Space *const &, const Window &);
 
-				node::Leaf *getActiveLeaf();
+                ~Leaf() final;
 
-				void configureChildren();
+                void refresh() final;
 
-				friend Space;
-			};
-		}
+                node::Leaf *getActiveLeaf() final;
 
-		const long root_event_mask = SubstructureNotifyMask;
-		const long leaf_event_mask = FocusChangeMask | EnterWindowMask;
+            protected:
+                node::Branch *_receive(Node *const &, const FB &) final;
 
-		auto main = [&](Display *const &display, const auto &callback) {
-			auto space = new Space(display);
-			space->refresh();
+                friend Space;
+            };
 
-			CommandHandlers command_handlers = {};
-			callback(
-					command_handlers,
-					root_event_mask,
-					leaf_event_mask,
-					space->event_handlers,
-					[&](const auto &break_, const std::string &handling_event_command_name, const auto &handleEvent) {
-						command_handlers["exit"] = break_;
-						command_handlers[handling_event_command_name] = handleEvent;
-					}
-			);
-		};
-	}
+            class Branch : public Node {
+                std::list<Node *> _children;
+                std::list<Node *>::iterator _active_iter;
+            public:
+                Branch(Space *const &);
+
+                void configure(const HV &, const int &, const int &, const unsigned int &, const unsigned int &) final;
+
+                void refresh() final;
+
+                node::Leaf *getActiveLeaf() final;
+
+            protected:
+                node::Branch *_receive(Node *const &, const FB &) final;
+
+            public:
+
+                void configureChildren();
+
+                friend Space;
+                friend Leaf;
+            };
+        }
+
+        const long root_event_mask = SubstructureNotifyMask;
+        const long leaf_event_mask = FocusChangeMask | EnterWindowMask;
+
+        auto matrix = [&](Display *const &display, const auto &callback) {
+            auto space = new Space(display);
+            space->refresh();
+
+            server::CommandHandlers command_handlers = {};
+            callback(
+                    command_handlers,
+                    root_event_mask,
+                    leaf_event_mask,
+                    space->event_handlers,
+                    [&](const auto &break_, const std::string &handling_event_command_name, const auto &handleEvent) {
+                        command_handlers["exit"] = break_;
+                        command_handlers[handling_event_command_name] = handleEvent;
+                    }
+            );
+        };
+    }
 }
