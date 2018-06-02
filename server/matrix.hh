@@ -139,8 +139,8 @@ namespace wm {
         const long root_event_mask = SubstructureNotifyMask;
         const long leaf_event_mask = FocusChangeMask | EnterWindowMask;
 
-        auto matrix = [&](Display *const &display, const auto &break_, const auto &callback) {
-            auto space = Space(display, break_);
+        auto matrix = [&](Display *const &display, const auto &breakLoop, const auto &callback) {
+            auto space = Space(display, breakLoop);
             space.refresh(true);
             server::CommandHandlers command_handlers = {
                     {"exit",        [&]() {
