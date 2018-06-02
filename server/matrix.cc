@@ -26,28 +26,12 @@ namespace wm {
         }
 
         Space::Space(Display *const &display, const std::function<void()> &break_) :
+                _breakLoop(break_),
                 _display(display),
                 _normal_pixel(_colorPixel(config::normal_color)),
                 _focus_pixel(_colorPixel(config::focus_color)),
                 _xia_protocols(XInternAtom(display, "WM_PROTOCOLS", False)),
                 _xia_delete_window(XInternAtom(display, "WM_DELETE_WINDOW", False)),
-                command_handlers(
-                        {
-                                {"exit",        break_},
-                                {"focus-up",    [&]() {
-                                    focus(HV::VERTICAL, FB::BACKWARD);
-                                }},
-                                {"focus-right", [&]() {
-                                    focus(HV::HORIZONTAL, FB::FORWARD);
-                                }},
-                                {"focus-down",  [&]() {
-                                    focus(HV::VERTICAL, FB::FORWARD);
-                                }},
-                                {"focus-left",  [&]() {
-                                    focus(HV::HORIZONTAL, FB::BACKWARD);
-                                }}
-                        }
-                ),
                 event_handlers(
                         {
                                 {MapNotify,   [&](const XEvent &event) {
@@ -98,8 +82,6 @@ namespace wm {
             _display_hv = HV(_display_width > _display_height);
 
             _root = _view = _active = nullptr;
-
-            _refresh();
         }
 
         unsigned long Space::_colorPixel(const char *const &cc) {
@@ -107,16 +89,6 @@ namespace wm {
             XColor x_color;
             if (XAllocNamedColor(_display, cm, cc, &x_color, &x_color) == 0) error("XAllocNamedColor");
             return x_color.pixel;
-        }
-
-        void Space::_refresh() {
-            _display_width = (unsigned int) XDisplayWidth(_display, DefaultScreen(_display));
-            _display_height = (unsigned int) XDisplayHeight(_display, DefaultScreen(_display));
-            _display_hv = (HV) (_display_width >= _display_height);
-            if (_view) {
-                _view->_configure(_display_hv, -config::border_width, -config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2);
-                _view->_refresh();
-            }
         }
 
         node::Branch *Space::_join(wm::matrix::Node *const &node, wm::matrix::Node *const &target, const wm::matrix::FB &fb) {
@@ -152,12 +124,31 @@ namespace wm {
             }
         }
 
+        void Space::refresh(const bool &first_time) {
+            _display_width = (unsigned int) XDisplayWidth(_display, DefaultScreen(_display));
+            _display_height = (unsigned int) XDisplayHeight(_display, DefaultScreen(_display));
+            if (first_time) _display_hv = (HV) (_display_width >= _display_height);
+            if (_view) {
+                _view->_configure(_display_hv, -config::border_width, -config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2);
+                _view->_refresh();
+            }
+        }
+
+        void Space::exit() {
+            _breakLoop();
+        }
+
         void Space::focus(const wm::matrix::HV &hv, const FB &fb) {
             if (_active && _active != _view && _active->_parent->_hv == hv) {
                 auto i = std::next(_active->_iter_parent, fb ? 1 : -1);
                 if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
                 _focus(*i, false);
             }
+        }
+
+        void Space::transpose() {
+            _display_hv = HV(!_display_hv);
+            refresh();
         }
 
         Node::Node(Space *const &space) : _space(space) {
@@ -236,12 +227,31 @@ namespace wm {
                     case HV::HORIZONTAL: {
                         auto s = _x + config::border_width;
                         auto d = (_width - config::border_width * 2) / _children.size();
-                        for (auto i = _children.cbegin(); i != std::prev(_children.cend()); i++) {
+                        for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
                             (*i)->_configure(HV(!_hv), s, _y + config::border_width, d, _height - config::border_width * 2);
                             s += d;
-                        }
-                        (*std::prev(_children.cend()))->_configure(HV(!_hv), s, _y + config::border_width, _x + _width - config::border_width - s, _height - config::border_width * 2);
+                            i++;
+                        }));
+                        (*std::prev(_children.cend()))->_configure(
+                                HV(!_hv),
+                                s, _y + config::border_width,
+                                _x + _width - config::border_width - s, _height - config::border_width * 2
+                        );
                         break;
+                    }
+                    case HV::VERTICAL: {
+                        auto s = _y + config::border_width;
+                        auto d = (_height - config::border_width * 2) / _children.size();
+                        for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
+                            (*i)->_configure(HV(!_hv), _x + config::border_width, s, _width - config::border_width * 2, d);
+                            s += d;
+                            i++;
+                        }));
+                        (*std::prev(_children.cend()))->_configure(
+                                HV(!_hv),
+                                _x + config::border_width, s,
+                                _width - config::border_width * 2, _y + _height - config::border_width - s
+                        );
                     }
                 }
             }

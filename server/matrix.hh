@@ -26,6 +26,7 @@ namespace wm {
         };
 
         class Space {
+            const std::function<void()> _breakLoop;
             Display *const _display;
             const unsigned long _normal_pixel, _focus_pixel;
             const Atom _xia_protocols, _xia_delete_window;
@@ -40,15 +41,12 @@ namespace wm {
             PointerCoordinate _pointer_coordinate;
 
         public:
-            const server::CommandHandlers command_handlers;
             const server::EventHandlers event_handlers;
 
             Space(Display *const &, const std::function<void()> &);
 
         private:
             unsigned long _colorPixel(const char *const &);
-
-            void _refresh();
 
             node::Branch *_join(Node *const &, Node *const &, const FB &);
 
@@ -57,9 +55,15 @@ namespace wm {
             void _focus(Node *const &, const bool &);
 
         public:
+            void refresh(const bool & = false);
+
+            void exit();
+
             void focus(const HV &, const FB &);
 
             void move(const HV &, const FB &);
+
+            void transpose();
 
             friend Node;
             friend node::Branch;
@@ -137,8 +141,31 @@ namespace wm {
 
         auto matrix = [&](Display *const &display, const auto &break_, const auto &callback) {
             auto space = Space(display, break_);
+            space.refresh(true);
+            server::CommandHandlers command_handlers = {
+                    {"exit",        [&]() {
+                        space.exit();
+                    }},
+
+                    {"focus-up",    [&]() {
+                        space.focus(HV::VERTICAL, FB::BACKWARD);
+                    }},
+                    {"focus-right", [&]() {
+                        space.focus(HV::HORIZONTAL, FB::FORWARD);
+                    }},
+                    {"focus-down",  [&]() {
+                        space.focus(HV::VERTICAL, FB::FORWARD);
+                    }},
+                    {"focus-left",  [&]() {
+                        space.focus(HV::HORIZONTAL, FB::BACKWARD);
+                    }},
+
+                    {"transpose",   [&]() {
+                        space.transpose();
+                    }}
+            };
             callback(
-                    space.command_handlers,
+                    command_handlers,
                     root_event_mask,
                     leaf_event_mask,
                     space.event_handlers
