@@ -129,9 +129,10 @@ namespace wm {
                     root_event_mask,
                     leaf_event_mask,
                     space.event_handlers,
-                    [&](const auto &break_, const std::string &handling_event_command_name, const auto &handleEvent) {
+                    "handle-event",
+                    [&](const auto &break_, const auto &handleEvent) {
                         space.command_handlers["exit"] = break_;
-                        space.command_handlers[handling_event_command_name] = handleEvent;
+                        space.command_handlers["handle-event"] = handleEvent;
                     }
             );
         };

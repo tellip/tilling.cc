@@ -38,6 +38,7 @@ namespace wm {
                                                 parent->configureChildren();
                                                 parent->refresh();
                                             }
+                                            focus(leaf);
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
                                     }
                                 }},
@@ -45,11 +46,7 @@ namespace wm {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (_focus != leaf) {
-                                            if (_focus) XSetWindowBorder(_display, _focus->_window, _normal_pixel);
-                                            XSetWindowBorder(_display, leaf->_window, _focus_pixel);
-                                            _focus = leaf;
-                                        }
+                                        if (leaf != _focus) XSetInputFocus(_display, _focus->_window, RevertToNone, CurrentTime);
                                     }
                                 }},
                                 {EnterNotify, [&](const XEvent &event) {
@@ -96,7 +93,12 @@ namespace wm {
                 i = i->_parent;
             }));
             auto leaf = node->getActiveLeaf();
-            XSetInputFocus(_display, leaf->_window, RevertToNone, CurrentTime);
+            if (_focus != leaf) {
+                if (_focus) XSetWindowBorder(_display, _focus->_window, _normal_pixel);
+                XSetWindowBorder(_display, leaf->_window, _focus_pixel);
+                _focus = leaf;
+                XSetInputFocus(_display, leaf->_window, RevertToNone, CurrentTime);
+            }
         }
 
         node::Branch *Space::join(wm::matrix::Node *const &node, wm::matrix::Node *const &target, const wm::matrix::FB &fb) {

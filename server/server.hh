@@ -33,14 +33,19 @@ namespace wm {
             callback(
                     display,
                     //loop
-                    [&](const CommandHandlers &command_handlers, const long &root_event_mask, const long &leaf_event_mask, const EventHandlers &event_handlers, const auto &callback) {
+                    [&](const CommandHandlers &command_handlers, const long &root_event_mask, const long &leaf_event_mask, const EventHandlers &event_handlers, const std::string &handling_event_command_name, const auto &callback) {
                         bool looping = true;
+                        bool handling_event;
+                        bool handling_command = false;
+
                         auto thread_sock = std::thread([&]() {
                             while (looping) {
                                 sockaddr_in sai_client;
                                 socklen_t len = sizeof(sai_client);
                                 auto sock_client = accept(sock_server, (sockaddr *) &sai_client, &len);
                                 if (sock_client < 0) error("accept");
+
+                                if (!handling_event) handling_command = true;
 
                                 char buffer[256];
                                 bzero(buffer, sizeof(buffer));
@@ -50,20 +55,21 @@ namespace wm {
                                 if (i != command_handlers.end()) i->second();
                                 else std::cout << buffer << '\n';
 
+                                handling_command = false;
+
                                 close(sock_client);
                             }
                         });
 
                         XSelectInput(display, XDefaultRootWindow(display), root_event_mask);
                         XEvent event;
-                        bool handling;
-                        const std::string handling_event_command_name = "handle-event";
                         auto thread_x = std::thread([&]() {
                             while (looping) {
+                                while (handling_command);
                                 if (XCheckMaskEvent(display, root_event_mask | leaf_event_mask, &event)) {
-                                    handling = true;
+                                    handling_event = true;
                                     sendSock(handling_event_command_name);
-                                    while (handling);
+                                    while (handling_event);
                                 }
                             }
                         });
@@ -76,12 +82,11 @@ namespace wm {
                                         sendSock("");
                                     }
                                 },
-                                handling_event_command_name,
                                 //handleEvent
                                 [&]() {
                                     auto i = event_handlers.find(event.type);
                                     if (i != event_handlers.end()) i->second(event);
-                                    handling = false;
+                                    handling_event = false;
                                 },
                                 //join
                                 [&]() {
