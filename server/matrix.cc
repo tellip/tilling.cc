@@ -35,16 +35,16 @@ namespace wm {
                         {
                                 {"exit",        break_},
                                 {"focus-up",    [&]() {
-                                    _focus(HV::VERTICAL, FB::BACKWARD);
+                                    focus(HV::VERTICAL, FB::BACKWARD);
                                 }},
                                 {"focus-right", [&]() {
-                                    _focus(HV::HORIZONTAL, FB::FORWARD);
+                                    focus(HV::HORIZONTAL, FB::FORWARD);
                                 }},
                                 {"focus-down",  [&]() {
-                                    _focus(HV::VERTICAL, FB::FORWARD);
+                                    focus(HV::VERTICAL, FB::FORWARD);
                                 }},
                                 {"focus-left",  [&]() {
-                                    _focus(HV::HORIZONTAL, FB::BACKWARD);
+                                    focus(HV::HORIZONTAL, FB::BACKWARD);
                                 }}
                         }
                 ),
@@ -152,7 +152,7 @@ namespace wm {
             }
         }
 
-        void Space::_focus(const wm::matrix::HV &hv, const FB &fb) {
+        void Space::focus(const wm::matrix::HV &hv, const FB &fb) {
             if (_active && _active != _view && _active->_parent->_hv == hv) {
                 auto i = std::next(_active->_iter_parent, fb ? 1 : -1);
                 if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);

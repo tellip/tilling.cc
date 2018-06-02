@@ -56,7 +56,10 @@ namespace wm {
 
             void _focus(Node *const &, const bool &);
 
-            void _focus(const HV &, const FB &);
+        public:
+            void focus(const HV &, const FB &);
+
+            void move(const HV &, const FB &);
 
             friend Node;
             friend node::Branch;
