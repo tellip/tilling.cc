@@ -34,7 +34,7 @@ namespace wm {
                 _xia_delete_window(XInternAtom(display, "WM_DELETE_WINDOW", False)),
                 event_handlers(
                         {
-                                {MapNotify,   [&](const XEvent &event) {
+                                {MapNotify,       [&](const XEvent &event) {
                                     if (!event.xmap.override_redirect) {
                                         auto i = _leaves.find(event.xmap.window);
                                         if (i == _leaves.end()) {
@@ -58,14 +58,28 @@ namespace wm {
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
                                     }
                                 }},
-                                {FocusIn,     [&](const XEvent &event) {
+                                {ConfigureNotify, [&](const XEvent &event) {
+                                    auto i = _leaves.find(event.xconfigure.window);
+                                    if (i != _leaves.end()) {
+                                        auto leaf = i->second;
+                                        XWindowAttributes wa;
+                                        XGetWindowAttributes(_display, leaf->_window, &wa);
+                                        if ((
+                                                wa.x != leaf->_x ||
+                                                wa.y != leaf->_y ||
+                                                wa.width != leaf->_width - config::border_width * 2 ||
+                                                wa.height != leaf->_height - config::border_width * 2
+                                        )) leaf->_refresh();
+                                    }
+                                }},
+                                {FocusIn,         [&](const XEvent &event) {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
                                         if (leaf != _active) XSetInputFocus(_display, _active->_window, RevertToNone, CurrentTime);
                                     }
                                 }},
-                                {EnterNotify, [&](const XEvent &event) {
+                                {EnterNotify,     [&](const XEvent &event) {
                                     auto i = _leaves.find(event.xcrossing.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
