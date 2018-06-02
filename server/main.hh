@@ -14,17 +14,27 @@
 #include "../public.hh"
 
 namespace wm {
-	namespace matrix {
-		class Space;
+    namespace matrix {
+        enum HV {
+            HORIZONTAL = true, VERTICAL = false
+        };
 
-		class Node;
+        enum FB {
+            FORWARD = true, BACKWARD = false
+        };
 
-		namespace node {
-			class Branch;
+        class PointerCoordinate;
 
-			class Leaf;
-		}
-	}
+        class Space;
+
+        class Node;
+
+        namespace node {
+            class Branch;
+
+            class Leaf;
+        }
+    }
 }
 
 #include "server.hh"

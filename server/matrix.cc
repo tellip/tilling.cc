@@ -3,6 +3,28 @@
 
 namespace wm {
     namespace matrix {
+        PointerCoordinate::PointerCoordinate(Display *const &display) : _display(display) {
+            _x = _y = -1;
+        }
+
+        void PointerCoordinate::_refresh() {
+            XQueryPointer(_display, XDefaultRootWindow(_display), &_root, &_child, &_root_x, &_root_y, &_win_x, &_win_y, &_mask);
+        }
+
+        void PointerCoordinate::_record() {
+            _refresh();
+            _x = _root_x;
+            _y = _root_y;
+        }
+
+        bool PointerCoordinate::_check() {
+            _refresh();
+            return _x == _root_x && _y == _root_y && ({
+                _x = _y = -1;
+                true;
+            });
+        }
+
         Space::Space(Display *const &display, const std::function<void()> &break_) :
                 _display(display),
                 _normal_pixel(_colorPixel(config::normal_color)),
@@ -47,7 +69,8 @@ namespace wm {
                                                 parent->_configureChildren();
                                                 parent->_refresh();
                                             }
-//                                            focus(leaf, false);
+                                            _focus(leaf, false);
+                                            _pointer_coordinate._record();
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
                                     }
                                 }},
@@ -62,11 +85,12 @@ namespace wm {
                                     auto i = _leaves.find(event.xcrossing.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        _focus(leaf, true);
+                                        if (_active != leaf && !_pointer_coordinate._check()) _focus(leaf, true);
                                     }
                                 }}
                         }
-                ) {
+                ),
+                _pointer_coordinate(display) {
             if (_xia_protocols == None || _xia_delete_window == None) error("XInternAtom");
 
             _display_width = (unsigned int) XDisplayWidth(display, XDefaultScreen(display));

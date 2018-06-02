@@ -5,12 +5,24 @@
 
 namespace wm {
     namespace matrix {
-        enum HV {
-            HORIZONTAL = true, VERTICAL = false
-        };
+        class PointerCoordinate {
+            Display *const _display;
 
-        enum FB {
-            FORWARD = true, BACKWARD = false
+            int _x, _y;
+
+            Window _root, _child;
+            int _root_x, _root_y, _win_x, _win_y;
+            unsigned int _mask;
+
+            explicit PointerCoordinate(Display *const &);
+
+            void _refresh();
+
+            void _record();
+
+            bool _check();
+
+            friend Space;
         };
 
         class Space {
@@ -24,6 +36,8 @@ namespace wm {
             Node *_root, *_view;
             node::Leaf *_active;
             std::unordered_map<Window, node::Leaf *> _leaves;
+
+            PointerCoordinate _pointer_coordinate;
 
         public:
             const server::CommandHandlers command_handlers;
