@@ -11,12 +11,24 @@ namespace wm {
             return x_color.pixel;
         }
 
-        Space::Space(Display *const &display) :
+        Space::Space(Display *const &display, const std::function<void()> &break_) :
                 _display(display),
                 _normal_pixel(_colorPixel(config::normal_color)),
                 _focus_pixel(_colorPixel(config::focus_color)),
                 _xia_protocols(XInternAtom(display, "WM_PROTOCOLS", False)),
                 _xia_delete_window(XInternAtom(display, "WM_DELETE_WINDOW", False)),
+                command_handlers(
+                        {
+                                {"exit",       break_},
+                                {"focus-left", [&]() {
+                                    if (_focus && _focus != _view && _focus->_parent->_hv == HV::HORIZONTAL) {
+                                        auto i = std::prev(_focus->_iter_parent);
+                                        if (i == _focus->_parent->_children.end()) i = std::prev(i);
+                                        focus(*i);
+                                    }
+                                }}
+                        }
+                ),
                 event_handlers(
                         {
                                 {MapNotify,   [&](const XEvent &event) {
@@ -65,16 +77,6 @@ namespace wm {
             _display_hv = HV(_display_width > _display_height);
 
             _root = _view = _focus = nullptr;
-
-            command_handlers = {
-                    {"focus-left", [&]() {
-                        if (_focus && _focus != _view && _focus->_parent->_hv == HV::HORIZONTAL) {
-                            auto i = std::prev(_focus->_iter_parent);
-                            if (i == _focus->_parent->_children.end()) i = std::prev(i);
-                            focus(*i);
-                        }
-                    }}
-            };
         }
 
         void Space::refresh() {

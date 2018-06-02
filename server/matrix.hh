@@ -28,10 +28,10 @@ namespace wm {
             unsigned long _colorPixel(const char *const &);
 
         public:
+            const server::CommandHandlers command_handlers;
             const server::EventHandlers event_handlers;
-            server::CommandHandlers command_handlers;
 
-            explicit Space(Display *const &);
+            Space(Display *const &, const std::function<void()> &);
 
             void refresh();
 
@@ -97,7 +97,7 @@ namespace wm {
                 std::list<Node *> _children;
                 std::list<Node *>::iterator _active_iter;
             public:
-                Branch(Space *const &);
+                explicit Branch(Space *const &);
 
                 void configure(const HV &, const int &, const int &, const unsigned int &, const unsigned int &) final;
 
@@ -120,20 +120,15 @@ namespace wm {
         const long root_event_mask = SubstructureNotifyMask;
         const long leaf_event_mask = FocusChangeMask | EnterWindowMask;
 
-        auto matrix = [&](Display *const &display, const auto &callback) {
-            auto space = Space(display);
+        auto matrix = [&](Display *const &display, const auto &break_, const auto &callback) {
+            auto space = Space(display, break_);
             space.refresh();
 
             callback(
                     space.command_handlers,
                     root_event_mask,
                     leaf_event_mask,
-                    space.event_handlers,
-                    "handle-event",
-                    [&](const auto &break_, const auto &handleEvent) {
-                        space.command_handlers["exit"] = break_;
-                        space.command_handlers["handle-event"] = handleEvent;
-                    }
+                    space.event_handlers
             );
         };
     }

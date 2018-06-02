@@ -30,70 +30,63 @@ namespace wm {
             const auto display = XOpenDisplay(nullptr);
             if (display == nullptr) error("XOpenDisplay");
 
+            bool looping = false;
             callback(
                     display,
+                    //break
+                    [&]() {
+                        if (looping) {
+                            looping = false;
+                            sendSock("");
+                        }
+                    },
                     //loop
-                    [&](const CommandHandlers &command_handlers, const long &root_event_mask, const long &leaf_event_mask, const EventHandlers &event_handlers, const std::string &handling_event_command_name, const auto &callback) {
-                        bool looping = true;
-                        bool handling_event;
-                        bool handling_command = false;
-
-                        auto thread_sock = std::thread([&]() {
-                            while (looping) {
-                                sockaddr_in sai_client;
-                                socklen_t len = sizeof(sai_client);
-                                auto sock_client = accept(sock_server, (sockaddr *) &sai_client, &len);
-                                if (sock_client < 0) error("accept");
-
-                                if (!handling_event) handling_command = true;
-
-                                char buffer[256];
-                                bzero(buffer, sizeof(buffer));
-                                if (read(sock_client, buffer, sizeof(buffer)) < 0) error("read");
-
-                                auto i = command_handlers.find(buffer);
-                                if (i != command_handlers.end()) i->second();
-                                else std::cout << buffer << '\n';
-
-                                handling_command = false;
-
-                                close(sock_client);
-                            }
-                        });
-
-                        XSelectInput(display, XDefaultRootWindow(display), root_event_mask);
+                    [&](const CommandHandlers &command_handlers, const long &root_event_mask, const long &leaf_event_mask, const EventHandlers &event_handlers, const auto &callback) {
+                        std::queue<std::function<void()>> command_tasks;
                         XEvent event;
-                        auto thread_x = std::thread([&]() {
-                            while (looping) {
-                                while (handling_command);
-                                if (XCheckMaskEvent(display, root_event_mask | leaf_event_mask, &event)) {
-                                    handling_event = true;
-                                    sendSock(handling_event_command_name);
-                                    while (handling_event);
-                                }
-                            }
-                        });
+                        if (!looping) {
+                            looping = true;
 
-                        callback(
-                                //break
-                                [&]() {
-                                    if (looping) {
-                                        looping = false;
-                                        sendSock("");
-                                    }
-                                },
-                                //handleEvent
-                                [&]() {
-                                    auto i = event_handlers.find(event.type);
-                                    if (i != event_handlers.end()) i->second(event);
-                                    handling_event = false;
-                                },
-                                //join
-                                [&]() {
-                                    thread_sock.join();
-                                    thread_x.join();
+                            auto thread_sock = std::thread([&]() {
+                                while (looping) {
+                                    sockaddr_in sai_client;
+                                    socklen_t len = sizeof(sai_client);
+                                    auto sock_client = accept(sock_server, (sockaddr *) &sai_client, &len);
+                                    if (sock_client < 0) error("accept");
+
+                                    char buffer[256];
+                                    bzero(buffer, sizeof(buffer));
+                                    if (read(sock_client, buffer, sizeof(buffer)) < 0) error("read");
+
+                                    auto i = command_handlers.find(buffer);
+                                    if (i != command_handlers.end()) command_tasks.push(i->second);
+
+                                    close(sock_client);
                                 }
-                        );
+                            });
+
+                            XSelectInput(display, XDefaultRootWindow(display), root_event_mask);
+                            auto thread_x = std::thread([&]() {
+                                while (looping) {
+                                    while (command_tasks.size()) {
+                                        command_tasks.front()();
+                                        command_tasks.pop();
+                                    }
+                                    if (XCheckMaskEvent(display, root_event_mask | leaf_event_mask, &event)) {
+                                        auto i = event_handlers.find(event.type);
+                                        if (i != event_handlers.end()) i->second(event);
+                                    }
+                                }
+                            });
+
+                            callback(
+                                    //join
+                                    [&]() {
+                                        thread_sock.join();
+                                        thread_x.join();
+                                    }
+                            );
+                        }
                     },
                     //clean
                     [&]() {
