@@ -11,38 +11,15 @@ namespace wm {
             return x_color.pixel;
         }
 
-        void Space::_PointerCoordinates::_refresh() {
-            XQueryPointer(_host._display, XDefaultRootWindow(_host._display), &_root, &_child, &_root_x, &_root_y, &_win_x, &_win_y, &_mask);
-        }
-
-        Space::_PointerCoordinates::_PointerCoordinates(const wm::matrix::Space &host) : _host(host) {
-            _x = _y = -1;
-        }
-
-        void Space::_PointerCoordinates::record() {
-            _refresh();
-            _x = _root_x;
-            _y = _root_y;
-        }
-
-        bool Space::_PointerCoordinates::check() {
-            _refresh();
-            return _x == _root_x && _y == _root_y && ({
-                _x = _y = -1;
-                true;
-            });
-        }
-
         Space::Space(Display *const &display) :
                 _display(display),
                 _normal_pixel(_colorPixel(config::normal_color)),
                 _focus_pixel(_colorPixel(config::focus_color)),
                 _xia_protocols(XInternAtom(display, "WM_PROTOCOLS", False)),
                 _xia_delete_window(XInternAtom(display, "WM_DELETE_WINDOW", False)),
-                _pointer_coordinates(*this),
                 event_handlers(
                         {
-                                {MapNotify,   [&](const XEvent &event, const auto &done) {
+                                {MapNotify,   [&](const XEvent &event) {
                                     if (!event.xmap.override_redirect) {
                                         auto i = _leaves.find(event.xmap.window);
                                         if (i == _leaves.end()) {
@@ -63,9 +40,8 @@ namespace wm {
                                             }
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
                                     }
-                                    done();
                                 }},
-                                {FocusIn,     [&](const XEvent &event, const auto &done) {
+                                {FocusIn,     [&](const XEvent &event) {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
@@ -75,15 +51,13 @@ namespace wm {
                                             _focus = leaf;
                                         }
                                     }
-                                    done();
                                 }},
-                                {EnterNotify, [&](const XEvent &event, const auto &done) {
+                                {EnterNotify, [&](const XEvent &event) {
                                     auto i = _leaves.find(event.xcrossing.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
                                         focus(leaf);
                                     }
-                                    done();
                                 }}
                         }
                 ) {
@@ -94,6 +68,16 @@ namespace wm {
             _display_hv = HV(_display_width > _display_height);
 
             _root = _view = _focus = nullptr;
+
+            command_handlers = {
+                    {"focus-left", [&]() {
+                        if (_focus && _focus != _view && _focus->_parent->_hv == HV::HORIZONTAL) {
+                            auto i = std::prev(_focus->_iter_parent);
+                            if (i == _focus->_parent->_children.end()) i = std::prev(i);
+                            focus(*i);
+                        }
+                    }}
+            };
         }
 
         void Space::refresh() {

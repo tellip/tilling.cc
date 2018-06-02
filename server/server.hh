@@ -6,7 +6,7 @@ namespace wm {
     namespace server {
         typedef std::unordered_map<
                 int,
-                std::function<void(const XEvent &, const std::function<void()> &)>
+                std::function<void(const XEvent &)>
         > EventHandlers;
         typedef std::unordered_map<
                 std::string,
@@ -56,13 +56,14 @@ namespace wm {
 
                         XSelectInput(display, XDefaultRootWindow(display), root_event_mask);
                         XEvent event;
-                        bool handling = false;
+                        bool handling;
                         const std::string handling_event_command_name = "handle-event";
                         auto thread_x = std::thread([&]() {
                             while (looping) {
-                                if (!handling && XCheckMaskEvent(display, root_event_mask | leaf_event_mask, &event)) {
+                                if (XCheckMaskEvent(display, root_event_mask | leaf_event_mask, &event)) {
                                     handling = true;
                                     sendSock(handling_event_command_name);
+                                    while (handling);
                                 }
                             }
                         });
@@ -79,11 +80,8 @@ namespace wm {
                                 //handleEvent
                                 [&]() {
                                     auto i = event_handlers.find(event.type);
-                                    if (i != event_handlers.end()) {
-                                        i->second(event, [&]() {
-                                            handling = false;
-                                        });
-                                    } else handling = false;
+                                    if (i != event_handlers.end()) i->second(event);
+                                    handling = false;
                                 },
                                 //join
                                 [&]() {

@@ -27,29 +27,9 @@ namespace wm {
 
             unsigned long _colorPixel(const char *const &);
 
-            class _PointerCoordinates {
-                const Space &_host;
-
-                int _x, _y;
-
-                Window _root, _child;
-                int _root_x, _root_y, _win_x, _win_y;
-                unsigned int _mask;
-
-                void _refresh();
-
-            public:
-                explicit _PointerCoordinates(const Space &);
-
-                void record();
-
-                bool check();
-            };
-
-            _PointerCoordinates _pointer_coordinates;
-
         public:
             const server::EventHandlers event_handlers;
+            server::CommandHandlers command_handlers;
 
             explicit Space(Display *const &);
 
@@ -141,18 +121,17 @@ namespace wm {
         const long leaf_event_mask = FocusChangeMask | EnterWindowMask;
 
         auto matrix = [&](Display *const &display, const auto &callback) {
-            auto space = new Space(display);
-            space->refresh();
+            auto space = Space(display);
+            space.refresh();
 
-            server::CommandHandlers command_handlers = {};
             callback(
-                    command_handlers,
+                    space.command_handlers,
                     root_event_mask,
                     leaf_event_mask,
-                    space->event_handlers,
+                    space.event_handlers,
                     [&](const auto &break_, const std::string &handling_event_command_name, const auto &handleEvent) {
-                        command_handlers["exit"] = break_;
-                        command_handlers[handling_event_command_name] = handleEvent;
+                        space.command_handlers["exit"] = break_;
+                        space.command_handlers[handling_event_command_name] = handleEvent;
                     }
             );
         };
