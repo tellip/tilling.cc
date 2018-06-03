@@ -219,6 +219,15 @@ namespace wm {
         void Space::join(const HV &hv, const FB &fb) {
             if (_active && _active != _view && _active->_parent->_hv == hv) {
                 std::list<std::function<void()>> fl;
+                if (_active->_parent->_children.size() == 2) {
+                    fl.emplace_back([&]() {
+                        _active->_parent->_refresh();
+                    });
+                } else {
+                    fl.emplace_back([&]() {
+                        _active->_parent->_parent->_refresh();
+                    });
+                }
                 if (_active->_parent == _view && _active->_parent->_children.size() == 2) {
                     fl.emplace_back([&]() {
                         _view = _active->_parent;
@@ -232,15 +241,32 @@ namespace wm {
 
                 auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
                 if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
-                auto node = _quit(_active);
-                auto parent = _join(_active, *i, FB(!fb));
-                node->_refresh();
-                parent->_refresh();
+                auto sibling = *i;
+                _quit(_active);
+                _join(_active, sibling, FB(!fb));
 
                 for (auto j = fl.cbegin(); j != fl.cend(); ({
                     (*j)();
                     j++;
                 }));
+
+                _focus(_active, false);
+                _pointer_coordinate._record();
+            }
+        }
+
+        void Space::quit(const wm::matrix::HV &hv, const wm::matrix::FB &fb) {
+            if (_active && _active != _view && _active->_parent->_hv != hv) {
+                if (_active->_parent == _view) {
+                    //...
+                } else {
+                    auto i = std::next(_active->_parent->_parent_iter, fb ? 1 : -1);
+                    if (i == _active->_parent->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
+                    auto sibling = *i;
+                    _quit(_active);
+                    _join(_active, sibling, FB(!fb));
+                    _active->_parent->_refresh();
+                }
 
                 _focus(_active, false);
                 _pointer_coordinate._record();

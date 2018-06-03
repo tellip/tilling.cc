@@ -67,6 +67,8 @@ namespace wm {
 
             void join(const HV &, const FB &);
 
+            void quit(const HV &, const FB &);
+
             void transpose();
 
             friend Node;
