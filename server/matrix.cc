@@ -69,7 +69,8 @@ namespace wm {
                                                 wa.y != leaf->_y ||
                                                 wa.width != leaf->_width - config::border_width * 2 ||
                                                 wa.height != leaf->_height - config::border_width * 2
-                                        )) leaf->_refresh();
+                                        ))
+                                            leaf->_refresh();
                                     }
                                 }},
                                 {FocusIn,         [&](const XEvent &event) {
@@ -112,20 +113,42 @@ namespace wm {
 
         void Space::_move(wm::matrix::Node *const &node, const std::list<wm::matrix::Node *, std::allocator<wm::matrix::Node *>>::iterator &position) {
             if (node->_parent) {
-                node->_parent->_children.erase(node->_iter_parent);
-                node->_iter_parent = node->_parent->_children.insert(position, node);
+                node->_parent->_children.erase(node->_parent_iter);
+                node->_parent_iter = node->_parent->_children.insert(position, node);
             }
+        }
+
+        Node *Space::_quit(wm::matrix::Node *const &node) {
+            auto parent = node->_parent;
+            if (parent) {
+                parent->_children.erase(node->_parent_iter);
+                node->_parent = nullptr;
+                if (parent->_children.size() == 1) {
+                    auto sibling = parent->_children.front();
+                    parent->_children.erase(sibling->_parent_iter);
+                    auto grand_parent = parent->_parent;
+                    if (grand_parent) {
+                        sibling->_parent_iter = grand_parent->_children.insert(parent->_parent_iter, sibling);
+                        grand_parent->_children.erase(parent->_parent_iter);
+                    }
+                    sibling->_parent = grand_parent;
+                    delete parent;
+                    return sibling;
+                } else if (parent->_children.size() > 1) return parent;
+                else error("\"parent->_children.size()<1\"");
+            }
+            return nullptr;
         }
 
         void Space::_focus(Node *const &node, const bool &from_root) {
             if (from_root) {
                 for (auto i = node; i->_parent; ({
-                    i->_parent->_active_iter = i->_iter_parent;
+                    i->_parent->_iter_active = i->_parent_iter;
                     i = i->_parent;
                 }));
             } else {
-                for (auto i = node; i->_parent && i->_parent->_active_iter != i->_iter_parent; ({
-                    i->_parent->_active_iter = i->_iter_parent;
+                for (auto i = node; i->_parent && i->_parent->_iter_active != i->_parent_iter; ({
+                    i->_parent->_iter_active = i->_parent_iter;
                     i = i->_parent;
                 }));
             }
@@ -154,9 +177,33 @@ namespace wm {
 
         void Space::focus(const wm::matrix::HV &hv, const FB &fb) {
             if (_active && _active != _view && _active->_parent->_hv == hv) {
-                auto i = std::next(_active->_iter_parent, fb ? 1 : -1);
+                auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
                 if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
                 _focus(*i, false);
+            }
+        }
+
+        void Space::move(const wm::matrix::HV &hv, const wm::matrix::FB &fb) {
+            if (_active && _active != _view && _active->_parent->_hv == hv) {
+                _move(_active, std::next(_active->_parent_iter, 0.5 + 1.5 * (fb ? 1 : -1)));
+                _active->_parent->_configureChildren();
+                _active->_parent->_refresh();
+                _focus(_active, false);
+                _pointer_coordinate._record();
+            }
+        }
+
+        void Space::join(const wm::matrix::HV &hv, const wm::matrix::FB &fb) {
+            if (_active && _active != _view && _active->_parent->_hv == hv) {
+                _quit(_active);
+                auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
+                if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
+                std::cout << "--------------join\n";
+                auto parent = _join(_active, *i, FB(!fb));
+//                parent->_configureChildren();
+//                parent->_refresh();
+//                _focus(_active, false);
+//                _pointer_coordinate._refresh();
             }
         }
 
@@ -183,13 +230,13 @@ namespace wm {
             Leaf::Leaf(Space *const &space, const Window &window) :
                     Node(space),
                     _window(window),
-                    _iter_leaves(space->_leaves.insert(std::make_pair(window, this)).first) {
+                    _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
                 XSetWindowBorderWidth(space->_display, window, config::border_width);
                 XSelectInput(space->_display, window, leaf_event_mask);
             }
 
             Leaf::~Leaf() {
-                _space->_leaves.erase(_iter_leaves);
+                _space->_leaves.erase(_leaves_iter);
             }
 
             void Leaf::_refresh() {
@@ -202,16 +249,19 @@ namespace wm {
 
             node::Branch *node::Leaf::_receive(wm::matrix::Node *const &node, const wm::matrix::FB &fb) {
                 auto new_parent = new Branch(_space);
+                std::cout << "-----------1\n";
                 if (_parent) {
-                    new_parent->_iter_parent = _parent->_children.insert(_iter_parent, new_parent);
-                    _parent->_children.erase(_iter_parent);
+                    new_parent->_parent_iter = _parent->_children.insert(_parent_iter, new_parent);
+                    _parent->_children.erase(_parent_iter);
                 }
+                std::cout << "-----------2\n";
                 new_parent->_parent = _parent;
-                new_parent->_children.push_back(this);
-                _iter_parent = new_parent->_children.begin();
+                _parent_iter = new_parent->_children.insert(new_parent->_children.begin(), this);
                 _parent = new_parent;
-                node->_iter_parent = new_parent->_children.insert(fb ? new_parent->_children.end() : new_parent->_children.begin(), node);
+                std::cout << "-----------3\n";
+                node->_parent_iter = new_parent->_children.insert(fb ? new_parent->_children.end() : new_parent->_children.begin(), node);
                 node->_parent = new_parent;
+                std::cout << "-----------4\n";
                 return new_parent;
             }
 
@@ -227,11 +277,11 @@ namespace wm {
             }
 
             node::Leaf *Branch::_getActiveLeaf() {
-                return (*_active_iter)->_getActiveLeaf();
+                return (*_iter_active)->_getActiveLeaf();
             }
 
             node::Branch *Branch::_receive(wm::matrix::Node *const &node, const wm::matrix::FB &fb) {
-                node->_iter_parent = _children.insert(fb ? std::next(_active_iter) : _active_iter, node);
+                node->_parent_iter = _children.insert(fb ? std::next(_iter_active) : _iter_active, node);
                 node->_parent = this;
                 return this;
             }

@@ -52,6 +52,8 @@ namespace wm {
 
             void _move(Node *const &, const std::list<Node *>::iterator &);
 
+            Node *_quit(Node *const &);
+
             void _focus(Node *const &, const bool &);
 
         public:
@@ -62,6 +64,8 @@ namespace wm {
             void focus(const HV &, const FB &);
 
             void move(const HV &, const FB &);
+
+            void join(const HV &, const FB &);
 
             void transpose();
 
@@ -75,7 +79,7 @@ namespace wm {
 
             node::Branch *_parent;
 
-            std::list<Node *>::iterator _iter_parent;
+            std::list<Node *>::iterator _parent_iter;
             HV _hv;
             int _x, _y;
             unsigned int _width, _height;
@@ -100,7 +104,7 @@ namespace wm {
         namespace node {
             class Leaf : public Node {
                 const Window _window;
-                const std::unordered_map<Window, Leaf *>::iterator _iter_leaves;
+                const std::unordered_map<Window, Leaf *>::iterator _leaves_iter;
 
                 Leaf(Space *const &, const Window &);
 
@@ -117,7 +121,7 @@ namespace wm {
 
             class Branch : public Node {
                 std::list<Node *> _children;
-                std::list<Node *>::iterator _active_iter;
+                std::list<Node *>::iterator _iter_active;
 
                 explicit Branch(Space *const &);
 
@@ -158,6 +162,32 @@ namespace wm {
                     }},
                     {"focus-left",  [&]() {
                         space.focus(HV::HORIZONTAL, FB::BACKWARD);
+                    }},
+
+                    {"move-up",     [&]() {
+                        space.move(HV::VERTICAL, FB::BACKWARD);
+                    }},
+                    {"move-right",  [&]() {
+                        space.move(HV::HORIZONTAL, FB::FORWARD);
+                    }},
+                    {"move-down",   [&]() {
+                        space.move(HV::VERTICAL, FB::FORWARD);
+                    }},
+                    {"move-left",   [&]() {
+                        space.move(HV::HORIZONTAL, FB::BACKWARD);
+                    }},
+
+                    {"join-up",     [&]() {
+                        space.join(HV::VERTICAL, FB::BACKWARD);
+                    }},
+                    {"join-right",  [&]() {
+                        space.join(HV::HORIZONTAL, FB::FORWARD);
+                    }},
+                    {"join-down",   [&]() {
+                        space.join(HV::VERTICAL, FB::FORWARD);
+                    }},
+                    {"join-left",   [&]() {
+                        space.join(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
                     {"transpose",   [&]() {
