@@ -39,20 +39,35 @@ namespace wm {
                                         auto i = _leaves.find(event.xmap.window);
                                         if (i == _leaves.end()) {
                                             auto leaf = new node::Leaf(this, event.xmap.window);
+
+                                            std::list<std::function<void()>> fl;
                                             if (!_active) {
+                                                fl.emplace_back([&]() {
+                                                    _root = _view = leaf;
+                                                });
                                                 leaf->_configure(_display_hv, -config::border_width, -config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2);
                                                 leaf->_refresh();
-                                                _root = _view = leaf;
-                                            } else if (_active == _view) {
-                                                auto parent = _join(leaf, _active, FB::FORWARD);
-                                                parent->_configure(_display_hv, -config::border_width, -config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2);
-                                                parent->_refresh();
-                                                _view = parent;
                                             } else {
-                                                auto parent = _join(leaf, _active->_parent, FB::FORWARD);
-                                                parent->_configureChildren();
-                                                parent->_refresh();
+                                                if (_active == _view) {
+                                                    fl.emplace_back([&]() {
+                                                        _view = leaf;
+                                                    });
+                                                    if (_root == _view) {
+                                                        fl.emplace_back([&]() {
+                                                            _root = _view;
+                                                        });
+                                                    }
+                                                    _join(leaf, _active, FB::FORWARD);
+                                                } else {
+                                                    _join(leaf, _active->_parent, FB::FORWARD);
+                                                }
+                                                leaf->_parent->_refresh();
                                             }
+                                            for (auto j = fl.cbegin(); j != fl.cend(); ({
+                                                (*j)();
+                                                j++;
+                                            }));
+
                                             _focus(leaf, false);
                                             _pointer_coordinate._record();
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
@@ -106,19 +121,19 @@ namespace wm {
             return x_color.pixel;
         }
 
-        node::Branch *Space::_join(wm::matrix::Node *const &node, wm::matrix::Node *const &target, const wm::matrix::FB &fb) {
+        node::Branch *Space::_join(Node *const &node, Node *const &target, const FB &fb) {
             if (!node->_parent) return target->_receive(node, fb);
             else return nullptr;
         }
 
-        void Space::_move(wm::matrix::Node *const &node, const std::list<wm::matrix::Node *, std::allocator<wm::matrix::Node *>>::iterator &position) {
+        void Space::_move(Node *const &node, const std::list<Node *, std::allocator<Node *>>::iterator &position) {
             if (node->_parent) {
                 node->_parent->_children.erase(node->_parent_iter);
                 node->_parent_iter = node->_parent->_children.insert(position, node);
             }
         }
 
-        Node *Space::_quit(wm::matrix::Node *const &node) {
+        Node *Space::_quit(Node *const &node) {
             auto parent = node->_parent;
             if (parent) {
                 parent->_children.erase(node->_parent_iter);
@@ -175,7 +190,7 @@ namespace wm {
             _breakLoop();
         }
 
-        void Space::focus(const wm::matrix::HV &hv, const FB &fb) {
+        void Space::focus(const HV &hv, const FB &fb) {
             if (_active && _active != _view && _active->_parent->_hv == hv) {
                 auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
                 if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
@@ -183,7 +198,7 @@ namespace wm {
             }
         }
 
-        void Space::move(const wm::matrix::HV &hv, const wm::matrix::FB &fb) {
+        void Space::move(const HV &hv, const FB &fb) {
             if (_active && _active != _view && _active->_parent->_hv == hv) {
                 _move(_active, std::next(_active->_parent_iter, 0.5 + 1.5 * (fb ? 1 : -1)));
                 _active->_parent->_configureChildren();
@@ -193,18 +208,14 @@ namespace wm {
             }
         }
 
-        void Space::join(const wm::matrix::HV &hv, const wm::matrix::FB &fb) {
-            if (_active && _active != _view && _active->_parent->_hv == hv) {
-                _quit(_active);
-                auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
-                if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
-                std::cout << "--------------join\n";
-                auto parent = _join(_active, *i, FB(!fb));
-//                parent->_configureChildren();
-//                parent->_refresh();
-//                _focus(_active, false);
-//                _pointer_coordinate._refresh();
-            }
+        void Space::join(const HV &hv, const FB &fb) {
+//            if (_active && _active != _view && _active->_parent->_hv == hv) {
+//                std::list<std::function<void()>> fl;
+//                auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
+//                if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
+//                _quit(_active);
+//                _join(_active, *i, FB(!fb));
+//            }
         }
 
         void Space::transpose() {
@@ -247,21 +258,18 @@ namespace wm {
                 return this;
             }
 
-            node::Branch *node::Leaf::_receive(wm::matrix::Node *const &node, const wm::matrix::FB &fb) {
+            node::Branch *node::Leaf::_receive(Node *const &node, const FB &fb) {
                 auto new_parent = new Branch(_space);
-                std::cout << "-----------1\n";
                 if (_parent) {
                     new_parent->_parent_iter = _parent->_children.insert(_parent_iter, new_parent);
                     _parent->_children.erase(_parent_iter);
                 }
-                std::cout << "-----------2\n";
                 new_parent->_parent = _parent;
                 _parent_iter = new_parent->_children.insert(new_parent->_children.begin(), this);
                 _parent = new_parent;
-                std::cout << "-----------3\n";
                 node->_parent_iter = new_parent->_children.insert(fb ? new_parent->_children.end() : new_parent->_children.begin(), node);
                 node->_parent = new_parent;
-                std::cout << "-----------4\n";
+                new_parent->_configure(_hv, _x, _y, _width, _height);
                 return new_parent;
             }
 
@@ -280,9 +288,10 @@ namespace wm {
                 return (*_iter_active)->_getActiveLeaf();
             }
 
-            node::Branch *Branch::_receive(wm::matrix::Node *const &node, const wm::matrix::FB &fb) {
+            node::Branch *Branch::_receive(Node *const &node, const FB &fb) {
                 node->_parent_iter = _children.insert(fb ? std::next(_iter_active) : _iter_active, node);
                 node->_parent = this;
+                _configureChildren();
                 return this;
             }
 
