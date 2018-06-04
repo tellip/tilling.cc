@@ -96,6 +96,8 @@ namespace wm {
 
             virtual node::Leaf *_getActiveLeaf()=0;
 
+            virtual node::Leaf *_setActiveLeaf(const FB &)=0;
+
             virtual node::Branch *_receive(Node *const &, const FB &)=0;
 
             friend Space;
@@ -116,6 +118,8 @@ namespace wm {
 
                 node::Leaf *_getActiveLeaf() final;
 
+                node::Leaf *_setActiveLeaf(const FB &) final;
+
                 node::Branch *_receive(Node *const &, const FB &) final;
 
                 friend Space;
@@ -132,6 +136,8 @@ namespace wm {
                 void _refresh() final;
 
                 node::Leaf *_getActiveLeaf() final;
+
+                node::Leaf *_setActiveLeaf(const FB &) final;
 
                 node::Branch *_receive(Node *const &, const FB &) final;
 
@@ -190,6 +196,19 @@ namespace wm {
                     }},
                     {"join-left",   [&]() {
                         space.join(HV::HORIZONTAL, FB::BACKWARD);
+                    }},
+
+                    {"quit-up",     [&]() {
+                        space.quit(HV::VERTICAL, FB::BACKWARD);
+                    }},
+                    {"quit-right",  [&]() {
+                        space.quit(HV::HORIZONTAL, FB::FORWARD);
+                    }},
+                    {"quit-down",   [&]() {
+                        space.quit(HV::VERTICAL, FB::FORWARD);
+                    }},
+                    {"quit-left",   [&]() {
+                        space.quit(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
                     {"transpose",   [&]() {

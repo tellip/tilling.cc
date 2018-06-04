@@ -136,6 +136,7 @@ namespace wm {
         Node *Space::_quit(Node *const &node) {
             auto parent = node->_parent;
             if (parent) {
+                if (parent->_iter_active == node->_parent_iter) parent->_iter_active = parent->_children.end();
                 parent->_children.erase(node->_parent_iter);
                 node->_parent = nullptr;
                 if (parent->_children.size() == 1) {
@@ -198,11 +199,11 @@ namespace wm {
                 if (_active->_parent->_hv == hv) {
                     auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
                     if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
-                    _focus(*i, false);
+                    _focus((*i)->_setActiveLeaf(FB(!fb)), false);
                 } else if (_active->_parent != _view) {
                     auto i = std::next(_active->_parent->_parent_iter, fb ? 1 : -1);
                     if (i == _active->_parent->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
-                    _focus(*i, false);
+                    _focus((*i)->_setActiveLeaf(FB(!fb)), false);
                 }
             }
         }
@@ -255,16 +256,22 @@ namespace wm {
             }
         }
 
-        void Space::quit(const wm::matrix::HV &hv, const wm::matrix::FB &fb) {
+        void Space::quit(const HV &hv, const FB &fb) {
             if (_active && _active != _view && _active->_parent->_hv != hv) {
                 if (_active->_parent == _view) {
-                    //...
+                    if (_root == _view) {
+                        auto rest = _quit(_active);
+                        _active->_configure(rest->_hv, rest->_x, rest->_y, rest->_width, rest->_height);
+                        _join(rest, _active, FB(!fb));
+                        _active->_parent->_refresh();
+                        _root = _view = _active->_parent;
+                    } else {
+                        //...
+                    }
                 } else {
-                    auto i = std::next(_active->_parent->_parent_iter, fb ? 1 : -1);
-                    if (i == _active->_parent->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
-                    auto sibling = *i;
-                    _quit(_active);
-                    _join(_active, sibling, FB(!fb));
+                    auto rest = _quit(_active);
+                    rest->_parent->_iter_active = rest->_parent_iter;
+                    _join(_active, rest->_parent, fb);
                     _active->_parent->_refresh();
                 }
 
@@ -313,6 +320,10 @@ namespace wm {
                 return this;
             }
 
+            node::Leaf *Leaf::_setActiveLeaf(const FB &) {
+                return this;
+            }
+
             node::Branch *node::Leaf::_receive(Node *const &node, const FB &fb) {
                 auto new_parent = new Branch(_space);
                 if (_parent) {
@@ -343,8 +354,13 @@ namespace wm {
                 return (*_iter_active)->_getActiveLeaf();
             }
 
+            node::Leaf *Branch::_setActiveLeaf(const FB &fb) {
+                if (_iter_active == _children.end()) _iter_active = (fb ? std::prev(_children.end()) : _children.begin());
+                return (*_iter_active)->_setActiveLeaf(fb);
+            }
+
             node::Branch *Branch::_receive(Node *const &node, const FB &fb) {
-                node->_parent_iter = _children.insert(fb ? std::next(_iter_active) : _iter_active, node);
+                node->_parent_iter = _children.insert(_iter_active == _children.end() ? (fb ? _children.end() : _children.begin()) : (fb ? std::next(_iter_active) : _iter_active), node);
                 node->_parent = this;
                 _configureChildren();
                 return this;
