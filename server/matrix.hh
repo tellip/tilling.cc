@@ -69,7 +69,11 @@ namespace wm {
 
             void viewMove(const FB &);
 
+            void viewExtreme(const FB &);
+
             void transpose();
+
+            void closeActive(const bool &);
 
             friend Node;
             friend node::Branch;
@@ -161,64 +165,77 @@ namespace wm {
             auto space = Space(display, breakLoop);
             space.refresh();
             server::CommandHandlers command_handlers = {
-                    {"exit",            [&]() {
+                    {"exit",           [&]() {
                         space.exit();
                     }},
 
-                    {"focus-up",        [&]() {
+                    {"focus-up",       [&]() {
                         space.focus(HV::VERTICAL, FB::BACKWARD);
                     }},
-                    {"focus-right",     [&]() {
+                    {"focus-right",    [&]() {
                         space.focus(HV::HORIZONTAL, FB::FORWARD);
                     }},
-                    {"focus-down",      [&]() {
+                    {"focus-down",     [&]() {
                         space.focus(HV::VERTICAL, FB::FORWARD);
                     }},
-                    {"focus-left",      [&]() {
+                    {"focus-left",     [&]() {
                         space.focus(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-                    {"move-up",         [&]() {
+                    {"move-up",        [&]() {
                         space.move(HV::VERTICAL, FB::BACKWARD);
                     }},
-                    {"move-right",      [&]() {
+                    {"move-right",     [&]() {
                         space.move(HV::HORIZONTAL, FB::FORWARD);
                     }},
-                    {"move-down",       [&]() {
+                    {"move-down",      [&]() {
                         space.move(HV::VERTICAL, FB::FORWARD);
                     }},
-                    {"move-left",       [&]() {
+                    {"move-left",      [&]() {
                         space.move(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-                    {"reparent-up",     [&]() {
+                    {"reparent-up",    [&]() {
                         space.reparent(HV::VERTICAL, FB::BACKWARD);
                     }},
-                    {"reparent-right",  [&]() {
+                    {"reparent-right", [&]() {
                         space.reparent(HV::HORIZONTAL, FB::FORWARD);
                     }},
-                    {"reparent-down",   [&]() {
+                    {"reparent-down",  [&]() {
                         space.reparent(HV::VERTICAL, FB::FORWARD);
                     }},
-                    {"reparent-left",   [&]() {
+                    {"reparent-left",  [&]() {
                         space.reparent(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-                    {"view-in",       [&]() {
+                    {"view-in",        [&]() {
                         space.viewResize(FB::FORWARD);
                     }},
-                    {"view-out",      [&]() {
+                    {"view-out",       [&]() {
                         space.viewResize(FB::BACKWARD);
                     }},
-                    {"view-forward",  [&]() {
+                    {"view-leaf",      [&]() {
+                        space.viewExtreme(FB::FORWARD);
+                    }},
+                    {"view-root",      [&]() {
+                        space.viewExtreme(FB::BACKWARD);
+                    }},
+                    {"view-forward",   [&]() {
                         space.viewMove(FB::FORWARD);
                     }},
-                    {"view-backward", [&]() {
+                    {"view-backward",  [&]() {
                         space.viewMove(FB::BACKWARD);
                     }},
 
-                    {"transpose",       [&]() {
+                    {"transpose",      [&]() {
                         space.transpose();
+                    }},
+
+                    {"close-window",   [&]() {
+                        space.closeActive(false);
+                    }},
+                    {"kill-window",    [&]() {
+                        space.closeActive(true);
                     }}
             };
             callback(

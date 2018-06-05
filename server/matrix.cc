@@ -290,7 +290,7 @@ namespace wm {
                             _active->_parent->_parent->_refresh();
                         });
                     }
-                    if (_active->_parent == _view && _active->_parent->_children.size() == 2) {
+                    if (_active->_parent == _view && _active->_parent->_children.size() <= 2) {
                         fl.emplace_back([&]() {
                             _view = _active->_parent;
                         });
@@ -381,11 +381,38 @@ namespace wm {
             }
         }
 
+        void Space::viewExtreme(const FB &fb) {
+            auto new_view = (fb ? _active : _root);
+            if (new_view) {
+                new_view->_configure(_view->_attribute);
+                XRaiseWindow(_display, _mask_layer);
+                new_view->_refresh();
+                _view = new_view;
+                _pointer_coordinate.record();
+            }
+        }
+
         void Space::transpose() {
             auto attribute = _view->_attribute;
             attribute.hv = _display_hv = HV(!_display_hv);
             _view->_configure(attribute);
             _view->_refresh();
+        }
+
+        void Space::closeActive(const bool &force) {
+            if (_active) {
+                if (force) XDestroyWindow(_display, _active->_window);
+                else {
+                    XEvent event;
+                    event.type = ClientMessage;
+                    event.xclient.window = _active->_window;
+                    event.xclient.message_type = _xia_protocols;
+                    event.xclient.format = 32;
+                    event.xclient.data.l[0] = _xia_delete_window;
+                    event.xclient.data.l[1] = CurrentTime;
+                    XSendEvent(_display, _active->_window, False, NoEventMask, &event);
+                }
+            }
         }
 
         Node::Node(Space *const &space) : _space(space) {
