@@ -64,9 +64,7 @@ namespace wm {
 
             void move(const HV &, const FB &);
 
-            void join(const HV &, const FB &);
-
-            void quit(const HV &, const FB &);
+            void alter(const HV &, const FB &);
 
             void review(const FB &);
 
@@ -198,30 +196,43 @@ namespace wm {
                         space.move(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-                    {"join-up",     [&]() {
-                        space.join(HV::VERTICAL, FB::BACKWARD);
-                    }},
-                    {"join-right",  [&]() {
-                        space.join(HV::HORIZONTAL, FB::FORWARD);
-                    }},
-                    {"join-down",   [&]() {
-                        space.join(HV::VERTICAL, FB::FORWARD);
-                    }},
-                    {"join-left",   [&]() {
-                        space.join(HV::HORIZONTAL, FB::BACKWARD);
-                    }},
+//                    {"join-up",     [&]() {
+//                        space.join(HV::VERTICAL, FB::BACKWARD);
+//                    }},
+//                    {"join-right",  [&]() {
+//                        space.join(HV::HORIZONTAL, FB::FORWARD);
+//                    }},
+//                    {"join-down",   [&]() {
+//                        space.join(HV::VERTICAL, FB::FORWARD);
+//                    }},
+//                    {"join-left",   [&]() {
+//                        space.join(HV::HORIZONTAL, FB::BACKWARD);
+//                    }},
+//
+//                    {"quit-up",     [&]() {
+//                        space.quit(HV::VERTICAL, FB::BACKWARD);
+//                    }},
+//                    {"quit-right",  [&]() {
+//                        space.quit(HV::HORIZONTAL, FB::FORWARD);
+//                    }},
+//                    {"quit-down",   [&]() {
+//                        space.quit(HV::VERTICAL, FB::FORWARD);
+//                    }},
+//                    {"quit-left",   [&]() {
+//                        space.quit(HV::HORIZONTAL, FB::BACKWARD);
+//                    }},
 
-                    {"quit-up",     [&]() {
-                        space.quit(HV::VERTICAL, FB::BACKWARD);
+                    {"alter-up",     [&]() {
+                        space.alter(HV::VERTICAL, FB::BACKWARD);
                     }},
-                    {"quit-right",  [&]() {
-                        space.quit(HV::HORIZONTAL, FB::FORWARD);
+                    {"alter-right",  [&]() {
+                        space.alter(HV::HORIZONTAL, FB::FORWARD);
                     }},
-                    {"quit-down",   [&]() {
-                        space.quit(HV::VERTICAL, FB::FORWARD);
+                    {"alter-down",   [&]() {
+                        space.alter(HV::VERTICAL, FB::FORWARD);
                     }},
-                    {"quit-left",   [&]() {
-                        space.quit(HV::HORIZONTAL, FB::BACKWARD);
+                    {"alter-left",   [&]() {
+                        space.alter(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
                     {"review-in",   [&]() {

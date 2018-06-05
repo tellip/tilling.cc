@@ -75,6 +75,20 @@ namespace wm {
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
                                     }
                                 }},
+                                {UnmapNotify,     [&](const XEvent &event) {
+                                    auto i = _leaves.find(event.xconfigure.window);
+                                    if (i != _leaves.end()) {
+                                        auto leaf = i->second;
+                                        if (leaf == _active && leaf->_parent) {
+                                            auto j = leaf->_parent_iter;
+                                            if (j == leaf->_parent->_children.begin()) j = std::next(j);
+                                            else j = std::prev(j);
+                                            leaf->_parent->_iter_active = j;
+                                        }
+                                        auto rest = _quit(leaf);
+                                        if (rest) rest->_refresh();
+                                    }
+                                }},
                                 {ConfigureNotify, [&](const XEvent &event) {
                                     auto i = _leaves.find(event.xconfigure.window);
                                     if (i != _leaves.end()) {
@@ -157,6 +171,7 @@ namespace wm {
                     auto grand_parent = parent->_parent;
                     if (grand_parent) {
                         sibling->_parent_iter = grand_parent->_children.insert(parent->_parent_iter, sibling);
+                        if (grand_parent->_iter_active == parent->_parent_iter) grand_parent->_iter_active = sibling->_parent_iter;
                         grand_parent->_children.erase(parent->_parent_iter);
                     }
                     sibling->_parent = grand_parent;
@@ -238,79 +253,75 @@ namespace wm {
             }
         }
 
-        void Space::join(const HV &hv, const FB &fb) {
-            if (_active && _active != _view && _active->_parent->_attribute.hv == hv) {
-                std::list<std::function<void()>> fl;
-                if (_active->_parent->_children.size() == 2) {
-                    fl.emplace_back([&]() {
-                        _active->_parent->_refresh();
-                    });
-                } else {
-                    fl.emplace_back([&]() {
-                        _active->_parent->_parent->_refresh();
-                    });
-                }
-                if (_active->_parent == _view && _active->_parent->_children.size() == 2) {
-                    fl.emplace_back([&]() {
-                        _view = _active->_parent;
-                    });
-                    if (_root == _view) {
-                        fl.emplace_back([&]() {
-                            _root = _view;
-                        });
-                    }
-                }
-
-                auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
-                if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
-                auto sibling = *i;
-                _quit(_active);
-                _join(_active, sibling, FB(!fb));
-                _activate(_active);
-
-                for (auto j = fl.cbegin(); j != fl.cend(); ({
-                    (*j)();
-                    j++;
-                }));
-
-                _pointer_coordinate.record();
-            }
-        }
-
-        void Space::quit(const HV &hv, const FB &fb) {
-            if (_active && _active != _view && _active->_parent->_attribute.hv != hv) {
-                if (_view == _active->_parent) {
+        void Space::alter(const HV &hv, const FB &fb) {
+            if (_active && _active != _view) {
+                if (hv == _active->_parent->_attribute.hv) {
                     std::list<std::function<void()>> fl;
-
-                    auto attribute = Attribute(_view->_attribute);
-                    if (_root == _view) {
+                    if (_active->_parent->_children.size() == 2) {
                         fl.emplace_back([&]() {
-                            _root = _view;
+                            _active->_parent->_refresh();
                         });
-
-                        auto rest = _quit(_active);
-                        _join(rest, _active, FB(!fb));
                     } else {
-                        auto rest = _quit(_active);
-                        _activate(rest);
-                        _join(_active, rest->_parent, fb);
-                        _quit(rest);
-                        _join(rest, _active, FB(!fb));
+                        fl.emplace_back([&]() {
+                            _active->_parent->_parent->_refresh();
+                        });
                     }
-                    _active->_parent->_configure(std::move(attribute));
-                    _view = _active->_parent;
+                    if (_active->_parent == _view && _active->_parent->_children.size() == 2) {
+                        fl.emplace_back([&]() {
+                            _view = _active->_parent;
+                        });
+                        if (_root == _view) {
+                            fl.emplace_back([&]() {
+                                _root = _view;
+                            });
+                        }
+                    }
+
+                    auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
+                    if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
+                    auto sibling = *i;
+                    _quit(_active);
+                    _join(_active, sibling, FB(!fb));
+                    _activate(_active);
 
                     for (auto j = fl.cbegin(); j != fl.cend(); ({
                         (*j)();
                         j++;
                     }));
                 } else {
-                    auto rest = _quit(_active);
-                    _activate(rest);
-                    _join(_active, rest->_parent, fb);
+                    if (_view == _active->_parent) {
+                        std::list<std::function<void()>> fl;
+
+                        auto attribute = Attribute(_view->_attribute);
+                        if (_root == _view) {
+                            fl.emplace_back([&]() {
+                                _root = _view;
+                            });
+
+                            auto rest = _quit(_active);
+                            _join(rest, _active, FB(!fb));
+                        } else {
+                            auto rest = _quit(_active);
+                            _activate(rest);
+                            _join(_active, rest->_parent, fb);
+                            _quit(rest);
+                            _join(rest, _active, FB(!fb));
+                        }
+                        _active->_parent->_configure(std::move(attribute));
+                        _view = _active->_parent;
+
+                        for (auto j = fl.cbegin(); j != fl.cend(); ({
+                            (*j)();
+                            j++;
+                        }));
+                    } else {
+                        auto rest = _quit(_active);
+                        _activate(rest);
+                        _join(_active, rest->_parent, fb);
+                    }
+                    _activate(_active);
+                    _active->_parent->_refresh();
                 }
-                _activate(_active);
-                _active->_parent->_refresh();
                 _pointer_coordinate.record();
             }
         }
