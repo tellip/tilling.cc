@@ -85,7 +85,7 @@ namespace wm {
                                                 else j = std::prev(j);
                                                 auto sibling = *j;
                                                 _activate(sibling);
-                                                _active = sibling->_activeLeaf();
+                                                _active = sibling->_activeLeaf(FB::FORWARD);
                                                 _active->_focus(true);
                                             } else _active = nullptr;
                                         }
@@ -350,7 +350,7 @@ namespace wm {
             }
         }
 
-        void Space::resizeView(const FB &fb) {
+        void Space::viewResize(const FB &fb) {
             auto new_view = (fb ? _view->_activeChild() : _view->_parent);
             if (new_view) {
                 new_view->_configure(_view->_attribute);
@@ -361,15 +361,22 @@ namespace wm {
             }
         }
 
-        void Space::moveView(const FB &fb) {
+        void Space::viewMove(const FB &fb) {
             if (_view->_parent) {
                 auto i = std::next(_view->_parent_iter, fb ? 1 : -1);
                 if (i == _view->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
                 auto new_view = *i;
+
                 new_view->_configure(_view->_attribute);
                 XRaiseWindow(_display, _mask_layer);
                 new_view->_refresh();
+                _activate(new_view);
+                auto new_active = new_view->_activeLeaf(FB(!fb));
+                _active->_focus(false);
+                new_active->_focus(true);
+
                 _view = new_view;
+                _active = new_active;
                 _pointer_coordinate.record();
             }
         }
@@ -407,10 +414,6 @@ namespace wm {
             void Leaf::_refresh() {
                 XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);
                 XRaiseWindow(_space->_display, _window);
-            }
-
-            Leaf *Leaf::_activeLeaf() {
-                return this;
             }
 
             Leaf *Leaf::_activeLeaf(const FB &) {
@@ -452,10 +455,6 @@ namespace wm {
 
             void Branch::_refresh() {
                 for (auto i = _children.cbegin(); i != _children.cend(); (*i++)->_refresh());
-            }
-
-            Leaf *Branch::_activeLeaf() {
-                return (*_iter_active)->_activeLeaf();
             }
 
             Leaf *Branch::_activeLeaf(const FB &fb) {

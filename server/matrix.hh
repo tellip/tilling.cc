@@ -65,9 +65,9 @@ namespace wm {
 
             void reparent(const HV &, const FB &);
 
-            void resizeView(const FB &);
+            void viewResize(const FB &);
 
-            void moveView(const FB &);
+            void viewMove(const FB &);
 
             void transpose();
 
@@ -98,8 +98,6 @@ namespace wm {
 
             virtual void _refresh()=0;
 
-            virtual node::Leaf *_activeLeaf()=0;
-
             virtual node::Leaf *_activeLeaf(const FB &)=0;
 
             virtual Node *_activeChild()=0;
@@ -122,8 +120,6 @@ namespace wm {
 
                 void _refresh() final;
 
-                node::Leaf *_activeLeaf() final;
-
                 node::Leaf *_activeLeaf(const FB &) final;
 
                 Node *_activeChild() final;
@@ -144,8 +140,6 @@ namespace wm {
                 void _configure(const Attribute &) final;
 
                 void _refresh() final;
-
-                node::Leaf *_activeLeaf() final;
 
                 node::Leaf *_activeLeaf(const FB &) final;
 
@@ -197,32 +191,6 @@ namespace wm {
                         space.move(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-//                    {"join-up",     [&]() {
-//                        space.join(HV::VERTICAL, FB::BACKWARD);
-//                    }},
-//                    {"join-right",  [&]() {
-//                        space.join(HV::HORIZONTAL, FB::FORWARD);
-//                    }},
-//                    {"join-down",   [&]() {
-//                        space.join(HV::VERTICAL, FB::FORWARD);
-//                    }},
-//                    {"join-left",   [&]() {
-//                        space.join(HV::HORIZONTAL, FB::BACKWARD);
-//                    }},
-//
-//                    {"quit-up",     [&]() {
-//                        space.quit(HV::VERTICAL, FB::BACKWARD);
-//                    }},
-//                    {"quit-right",  [&]() {
-//                        space.quit(HV::HORIZONTAL, FB::FORWARD);
-//                    }},
-//                    {"quit-down",   [&]() {
-//                        space.quit(HV::VERTICAL, FB::FORWARD);
-//                    }},
-//                    {"quit-left",   [&]() {
-//                        space.quit(HV::HORIZONTAL, FB::BACKWARD);
-//                    }},
-
                     {"reparent-up",     [&]() {
                         space.reparent(HV::VERTICAL, FB::BACKWARD);
                     }},
@@ -236,17 +204,17 @@ namespace wm {
                         space.reparent(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-                    {"review-in",       [&]() {
-                        space.resizeView(FB::FORWARD);
+                    {"view-in",       [&]() {
+                        space.viewResize(FB::FORWARD);
                     }},
-                    {"review-out",      [&]() {
-                        space.resizeView(FB::BACKWARD);
+                    {"view-out",      [&]() {
+                        space.viewResize(FB::BACKWARD);
                     }},
-                    {"review-forward",  [&]() {
-                        space.moveView(FB::FORWARD);
+                    {"view-forward",  [&]() {
+                        space.viewMove(FB::FORWARD);
                     }},
-                    {"review-backward", [&]() {
-                        space.moveView(FB::BACKWARD);
+                    {"view-backward", [&]() {
+                        space.viewMove(FB::BACKWARD);
                     }},
 
                     {"transpose",       [&]() {
