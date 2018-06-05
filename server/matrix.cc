@@ -200,7 +200,7 @@ namespace wm {
 
         void Space::focus(const HV &hv, const FB &fb) {
             Node *sibling = nullptr;
-            for (Node *node = _active; node && node != _view; ({
+            for (Node *node = _active; node != _view; ({
                 auto parent = node->_parent;
                 if (parent->_attribute.hv == hv) {
                     auto i = std::next(node->_parent_iter, fb ? 1 : -1);
@@ -210,12 +210,12 @@ namespace wm {
                             i = std::next(i, fb ? 1 : -1);
                             sibling = *i;
 
-                            node = nullptr;
+                            node = _view;
                         } else node = grand_parent;
                     } else {
                         sibling = *i;
 
-                        node = nullptr;
+                        node = _view;
                     }
                 } else node = parent;
             }));
