@@ -1,4 +1,3 @@
-#include <X11/Xlib.h>
 #include "matrix.hh"
 
 namespace wm {
@@ -76,9 +75,8 @@ namespace wm {
                                     }
                                 }},
                                 {UnmapNotify,     [&](const XEvent &event) {
-                                    auto i = _leaves.find(event.xconfigure.window);
+                                    auto i = _leaves.find(event.xunmap.window);
                                     if (i != _leaves.end()) {
-                                        std::cout<<"--------------1\n";
                                         auto leaf = i->second;
                                         if (leaf == _active) {
                                             if (leaf->_parent) {
@@ -87,9 +85,8 @@ namespace wm {
                                                 else j = std::prev(j);
                                                 auto sibling = *j;
                                                 _activate(sibling);
-                                                auto new_active = sibling->_activeLeaf();
-                                                new_active->_focus(true);
-                                                _active = new_active;
+                                                _active = sibling->_activeLeaf();
+                                                _active->_focus(true);
                                             } else _active = nullptr;
                                         }
                                         Node *rest;
@@ -112,7 +109,6 @@ namespace wm {
                                             j++;
                                         }));
                                         _pointer_coordinate.record();
-                                        std::cout<<"--------------2\n";
                                     }
                                 }},
                                 {ConfigureNotify, [&](const XEvent &event) {
@@ -135,7 +131,7 @@ namespace wm {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (leaf != _active) XSetInputFocus(_display, _active->_window, RevertToNone, CurrentTime);
+                                        if (leaf != _active && _active) XSetInputFocus(_display, _active->_window, RevertToParent, CurrentTime);
                                     }
                                 }},
                                 {EnterNotify,     [&](const XEvent &event) {
@@ -143,12 +139,12 @@ namespace wm {
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
                                         if (_active != leaf && !_pointer_coordinate.check()) {
-                                            for (Node *i = leaf; i->_parent; ({
-                                                i->_parent->_iter_active = i->_parent_iter;
-                                                i = i->_parent;
+                                            for (Node *j = leaf; j->_parent; ({
+                                                j->_parent->_iter_active = j->_parent_iter;
+                                                j = j->_parent;
                                             }));
 
-                                            _active->_focus(false);
+                                            if (_active) _active->_focus(false);
                                             leaf->_focus(true);
                                             _active = leaf;
                                         }
@@ -201,15 +197,17 @@ namespace wm {
                         grand_parent->_children.erase(parent->_parent_iter);
                     }
                     sibling->_parent = grand_parent;
-                    sibling->_configure(Attribute(parent->_attribute));
+                    sibling->_configure(parent->_attribute);
                     delete parent;
                     return sibling;
                 } else if (parent->_children.size() > 1) {
                     parent->_configureChildren();
                     return parent;
-                } else error("\"parent->_children.size()<1\"");
-            }
-            return nullptr;
+                } else {
+                    error("\"parent->_children.size()<1\"");
+                    return nullptr;
+                }
+            } else return nullptr;
         }
 
         void Space::_activate(Node *const &node) {
@@ -272,7 +270,7 @@ namespace wm {
 
         void Space::move(const HV &hv, const FB &fb) {
             if (_active && _active != _view && _active->_parent->_attribute.hv == hv) {
-                _move(_active, std::next(_active->_parent_iter, 0.5 + 1.5 * (fb ? 1 : -1)));
+                _move(_active, std::next(_active->_parent_iter, lround(0.5 + 1.5 * (fb ? 1 : -1))));
                 _activate(_active);
                 _active->_parent->_refresh();
                 _pointer_coordinate.record();
@@ -318,7 +316,7 @@ namespace wm {
                     if (_view == _active->_parent) {
                         std::list<std::function<void()>> fl;
 
-                        auto attribute = Attribute(_view->_attribute);
+                        auto attribute = _view->_attribute;
                         if (_root == _view) {
                             fl.emplace_back([&]() {
                                 _root = _view;
@@ -333,7 +331,7 @@ namespace wm {
                             _quit(rest);
                             _join(rest, _active, FB(!fb));
                         }
-                        _active->_parent->_configure(std::move(attribute));
+                        _active->_parent->_configure(attribute);
                         _view = _active->_parent;
 
                         for (auto j = fl.cbegin(); j != fl.cend(); ({
@@ -352,10 +350,23 @@ namespace wm {
             }
         }
 
-        void Space::review(const FB &fb) {
+        void Space::resizeView(const FB &fb) {
             auto new_view = (fb ? _view->_activeChild() : _view->_parent);
             if (new_view) {
-                new_view->_configure(Attribute(_view->_attribute));
+                new_view->_configure(_view->_attribute);
+                XRaiseWindow(_display, _mask_layer);
+                new_view->_refresh();
+                _view = new_view;
+                _pointer_coordinate.record();
+            }
+        }
+
+        void Space::moveView(const FB &fb) {
+            if (_view->_parent) {
+                auto i = std::next(_view->_parent_iter, fb ? 1 : -1);
+                if (i == _view->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
+                auto new_view = *i;
+                new_view->_configure(_view->_attribute);
                 XRaiseWindow(_display, _mask_layer);
                 new_view->_refresh();
                 _view = new_view;
@@ -364,9 +375,9 @@ namespace wm {
         }
 
         void Space::transpose() {
-            auto attribute = std::move(_view->_attribute);
+            auto attribute = _view->_attribute;
             attribute.hv = _display_hv = HV(!_display_hv);
-            _view->_configure(std::move(attribute));
+            _view->_configure(attribute);
             _view->_refresh();
         }
 
@@ -376,8 +387,8 @@ namespace wm {
 
         Node::~Node() = default;
 
-        void Node::_configure(Attribute &&attribute) {
-            _attribute = std::move(attribute);
+        void Node::_configure(const Attribute &attribute) {
+            _attribute = attribute;
         }
 
         namespace node {
@@ -421,21 +432,21 @@ namespace wm {
                 _parent = new_parent;
                 node->_parent_iter = new_parent->_children.insert(fb ? new_parent->_children.end() : new_parent->_children.begin(), node);
                 node->_parent = new_parent;
-                new_parent->_configure(Attribute(_attribute));
+                new_parent->_configure(_attribute);
                 return new_parent;
             }
 
             void Leaf::_focus(const bool &yes) {
                 if (yes) {
                     XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
-                    XSetInputFocus(_space->_display, _window, RevertToNone, CurrentTime);
+                    XSetInputFocus(_space->_display, _window, RevertToParent, CurrentTime);
                 } else XSetWindowBorder(_space->_display, _window, _space->_normal_pixel);
             }
 
             Branch::Branch(Space *const &space) : Node(space) {}
 
-            void Branch::_configure(Attribute &&attribute) {
-                Node::_configure(std::move(attribute));
+            void Branch::_configure(const Attribute &attribute) {
+                Node::_configure(attribute);
                 _configureChildren();
             }
 

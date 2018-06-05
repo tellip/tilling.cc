@@ -1,6 +1,5 @@
 #pragma once
 
-#include <X11/Xlib.h>
 #include "main.hh"
 
 namespace wm {
@@ -66,7 +65,9 @@ namespace wm {
 
             void reparent(const HV &, const FB &);
 
-            void review(const FB &);
+            void resizeView(const FB &);
+
+            void moveView(const FB &);
 
             void transpose();
 
@@ -93,7 +94,7 @@ namespace wm {
 
             virtual ~Node() = 0;
 
-            virtual void _configure(Attribute &&);
+            virtual void _configure(const Attribute &);
 
             virtual void _refresh()=0;
 
@@ -140,7 +141,7 @@ namespace wm {
 
                 explicit Branch(Space *const &);
 
-                void _configure(Attribute &&) final;
+                void _configure(const Attribute &) final;
 
                 void _refresh() final;
 
@@ -166,33 +167,33 @@ namespace wm {
             auto space = Space(display, breakLoop);
             space.refresh();
             server::CommandHandlers command_handlers = {
-                    {"exit",        [&]() {
+                    {"exit",            [&]() {
                         space.exit();
                     }},
 
-                    {"focus-up",    [&]() {
+                    {"focus-up",        [&]() {
                         space.focus(HV::VERTICAL, FB::BACKWARD);
                     }},
-                    {"focus-right", [&]() {
+                    {"focus-right",     [&]() {
                         space.focus(HV::HORIZONTAL, FB::FORWARD);
                     }},
-                    {"focus-down",  [&]() {
+                    {"focus-down",      [&]() {
                         space.focus(HV::VERTICAL, FB::FORWARD);
                     }},
-                    {"focus-left",  [&]() {
+                    {"focus-left",      [&]() {
                         space.focus(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-                    {"move-up",     [&]() {
+                    {"move-up",         [&]() {
                         space.move(HV::VERTICAL, FB::BACKWARD);
                     }},
-                    {"move-right",  [&]() {
+                    {"move-right",      [&]() {
                         space.move(HV::HORIZONTAL, FB::FORWARD);
                     }},
-                    {"move-down",   [&]() {
+                    {"move-down",       [&]() {
                         space.move(HV::VERTICAL, FB::FORWARD);
                     }},
-                    {"move-left",   [&]() {
+                    {"move-left",       [&]() {
                         space.move(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
@@ -235,14 +236,20 @@ namespace wm {
                         space.reparent(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-                    {"review-in",   [&]() {
-                        space.review(FB::FORWARD);
+                    {"review-in",       [&]() {
+                        space.resizeView(FB::FORWARD);
                     }},
-                    {"review-out",  [&]() {
-                        space.review(FB::BACKWARD);
+                    {"review-out",      [&]() {
+                        space.resizeView(FB::BACKWARD);
+                    }},
+                    {"review-forward",  [&]() {
+                        space.moveView(FB::FORWARD);
+                    }},
+                    {"review-backward", [&]() {
+                        space.moveView(FB::BACKWARD);
                     }},
 
-                    {"transpose",   [&]() {
+                    {"transpose",       [&]() {
                         space.transpose();
                     }}
             };
