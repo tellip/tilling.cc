@@ -38,6 +38,7 @@ namespace wm {
 
             PointerCoordinate _pointer_coordinate;
 
+            bool _exiting;
         public:
             const server::EventHandlers event_handlers;
 

@@ -109,6 +109,8 @@ namespace wm {
                                             j++;
                                         }));
                                         _pointer_coordinate.record();
+
+                                        if (_exiting) closeActive(false);
                                     }
                                 }},
                                 {ConfigureNotify, [&](const XEvent &event) {
@@ -155,9 +157,8 @@ namespace wm {
                 _pointer_coordinate(display) {
             if (_xia_protocols == None || _xia_delete_window == None) error("XInternAtom");
             XMapWindow(_display, _mask_layer);
-
             _root = _view = _active = nullptr;
-
+            _exiting = false;
             refresh();
         }
 
@@ -234,7 +235,8 @@ namespace wm {
         }
 
         void Space::exit() {
-            _breakLoop();
+            _exiting = true;
+            closeActive(false);
         }
 
         void Space::focus(const HV &hv, const FB &fb) {
@@ -412,7 +414,7 @@ namespace wm {
                     event.xclient.data.l[1] = CurrentTime;
                     XSendEvent(_display, _active->_window, False, NoEventMask, &event);
                 }
-            }
+            } else if (_exiting) _breakLoop();
         }
 
         Node::Node(Space *const &space) : _space(space) {
