@@ -13,16 +13,14 @@ namespace wm {
             Window _root, _child;
             int _root_x, _root_y, _win_x, _win_y;
             unsigned int _mask;
-
+        public:
             explicit PointerCoordinate(Display *const &);
 
-            void _refresh();
+            void refresh();
 
-            void _record();
+            void record();
 
-            bool _check();
-
-            friend Space;
+            bool check();
         };
 
         class Space {
@@ -30,6 +28,7 @@ namespace wm {
             Display *const _display;
             const unsigned long _normal_pixel, _focus_pixel;
             const Atom _xia_protocols, _xia_delete_window;
+            const Window _mask_layer;
 
             unsigned int _display_width, _display_height;
             HV _display_hv;
@@ -54,10 +53,10 @@ namespace wm {
 
             Node *_quit(Node *const &);
 
-            void _focus(Node *const &, const bool &);
+            void _activate(Node *const &);
 
         public:
-            void refresh(const bool & = false);
+            void refresh();
 
             void exit();
 
@@ -69,11 +68,19 @@ namespace wm {
 
             void quit(const HV &, const FB &);
 
+            void review(const FB &);
+
             void transpose();
 
             friend Node;
             friend node::Branch;
             friend node::Leaf;
+        };
+
+        struct Attribute {
+            HV hv;
+            int x, y;
+            unsigned int width, height;
         };
 
         class Node {
@@ -82,21 +89,21 @@ namespace wm {
             node::Branch *_parent;
 
             std::list<Node *>::iterator _parent_iter;
-            HV _hv;
-            int _x, _y;
-            unsigned int _width, _height;
+            Attribute _attribute;
 
             explicit Node(Space *const &);
 
             virtual ~Node() = 0;
 
-            virtual void _configure(const HV &, const int &, const int &, const unsigned int &, const unsigned int &);
+            virtual void _configure(Attribute &&);
 
             virtual void _refresh()=0;
 
-            virtual node::Leaf *_getActiveLeaf()=0;
+            virtual node::Leaf *_activeLeaf()=0;
 
-            virtual node::Leaf *_setActiveLeaf(const FB &)=0;
+            virtual node::Leaf *_activeLeaf(const FB &)=0;
+
+            virtual Node *_activeChild()=0;
 
             virtual node::Branch *_receive(Node *const &, const FB &)=0;
 
@@ -116,11 +123,15 @@ namespace wm {
 
                 void _refresh() final;
 
-                node::Leaf *_getActiveLeaf() final;
+                node::Leaf *_activeLeaf() final;
 
-                node::Leaf *_setActiveLeaf(const FB &) final;
+                node::Leaf *_activeLeaf(const FB &) final;
+
+                Node *_activeChild() final;
 
                 node::Branch *_receive(Node *const &, const FB &) final;
+
+                void _focus(const bool &);
 
                 friend Space;
             };
@@ -131,13 +142,15 @@ namespace wm {
 
                 explicit Branch(Space *const &);
 
-                void _configure(const HV &, const int &, const int &, const unsigned int &, const unsigned int &) final;
+                void _configure(Attribute &&) final;
 
                 void _refresh() final;
 
-                node::Leaf *_getActiveLeaf() final;
+                node::Leaf *_activeLeaf() final;
 
-                node::Leaf *_setActiveLeaf(const FB &) final;
+                node::Leaf *_activeLeaf(const FB &) final;
+
+                Node *_activeChild() final;
 
                 node::Branch *_receive(Node *const &, const FB &) final;
 
@@ -153,7 +166,7 @@ namespace wm {
 
         auto matrix = [&](Display *const &display, const auto &breakLoop, const auto &callback) {
             auto space = Space(display, breakLoop);
-            space.refresh(true);
+            space.refresh();
             server::CommandHandlers command_handlers = {
                     {"exit",        [&]() {
                         space.exit();
@@ -209,6 +222,13 @@ namespace wm {
                     }},
                     {"quit-left",   [&]() {
                         space.quit(HV::HORIZONTAL, FB::BACKWARD);
+                    }},
+
+                    {"review-in",   [&]() {
+                        space.review(FB::FORWARD);
+                    }},
+                    {"review-out",  [&]() {
+                        space.review(FB::BACKWARD);
                     }},
 
                     {"transpose",   [&]() {

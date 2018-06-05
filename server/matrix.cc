@@ -7,18 +7,18 @@ namespace wm {
             _x = _y = -1;
         }
 
-        void PointerCoordinate::_refresh() {
+        void PointerCoordinate::refresh() {
             XQueryPointer(_display, XDefaultRootWindow(_display), &_root, &_child, &_root_x, &_root_y, &_win_x, &_win_y, &_mask);
         }
 
-        void PointerCoordinate::_record() {
-            _refresh();
+        void PointerCoordinate::record() {
+            refresh();
             _x = _root_x;
             _y = _root_y;
         }
 
-        bool PointerCoordinate::_check() {
-            _refresh();
+        bool PointerCoordinate::check() {
+            refresh();
             return _x == _root_x && _y == _root_y && ({
                 _x = _y = -1;
                 true;
@@ -32,6 +32,7 @@ namespace wm {
                 _focus_pixel(_colorPixel(config::focus_color)),
                 _xia_protocols(XInternAtom(display, "WM_PROTOCOLS", False)),
                 _xia_delete_window(XInternAtom(display, "WM_DELETE_WINDOW", False)),
+                _mask_layer(XCreateSimpleWindow(_display, XDefaultRootWindow(_display), 0, 0, 1, 1, 0, _normal_pixel, _normal_pixel)),
                 event_handlers(
                         {
                                 {MapNotify,       [&](const XEvent &event) {
@@ -45,7 +46,7 @@ namespace wm {
                                                 fl.emplace_back([&]() {
                                                     _root = _view = leaf;
                                                 });
-                                                leaf->_configure(_display_hv, -config::border_width, -config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2);
+                                                leaf->_configure({_display_hv, -(int) config::border_width, -(int) config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2});
                                                 leaf->_refresh();
                                             } else {
                                                 if (_active == _view) {
@@ -59,15 +60,18 @@ namespace wm {
                                                     }
                                                     _join(leaf, _active, FB::FORWARD);
                                                 } else _join(leaf, _active->_parent, FB::FORWARD);
+                                                _activate(leaf);
                                                 leaf->_parent->_refresh();
+                                                _active->_focus(false);
                                             }
                                             for (auto j = fl.cbegin(); j != fl.cend(); ({
                                                 (*j)();
                                                 j++;
                                             }));
 
-                                            _focus(leaf, false);
-                                            _pointer_coordinate._record();
+                                            leaf->_focus(true);
+                                            _active = leaf;
+                                            _pointer_coordinate.record();
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
                                     }
                                 }},
@@ -78,10 +82,10 @@ namespace wm {
                                         XWindowAttributes wa;
                                         XGetWindowAttributes(_display, leaf->_window, &wa);
                                         if ((
-                                                wa.x != leaf->_x ||
-                                                wa.y != leaf->_y ||
-                                                wa.width != leaf->_width - config::border_width * 2 ||
-                                                wa.height != leaf->_height - config::border_width * 2
+                                                wa.x != leaf->_attribute.x ||
+                                                wa.y != leaf->_attribute.y ||
+                                                wa.width != leaf->_attribute.width - config::border_width * 2 ||
+                                                wa.height != leaf->_attribute.height - config::border_width * 2
                                         )) {
                                             leaf->_refresh();
                                         }
@@ -98,19 +102,27 @@ namespace wm {
                                     auto i = _leaves.find(event.xcrossing.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (_active != leaf && !_pointer_coordinate._check()) _focus(leaf, true);
+                                        if (_active != leaf && !_pointer_coordinate.check()) {
+                                            for (Node *i = leaf; i->_parent; ({
+                                                i->_parent->_iter_active = i->_parent_iter;
+                                                i = i->_parent;
+                                            }));
+
+                                            _active->_focus(false);
+                                            leaf->_focus(true);
+                                            _active = leaf;
+                                        }
                                     }
                                 }}
                         }
                 ),
                 _pointer_coordinate(display) {
             if (_xia_protocols == None || _xia_delete_window == None) error("XInternAtom");
-
-            _display_width = (unsigned int) XDisplayWidth(display, XDefaultScreen(display));
-            _display_height = (unsigned int) XDisplayHeight(display, XDefaultScreen(display));
-            _display_hv = HV(_display_width > _display_height);
+            XMapWindow(_display, _mask_layer);
 
             _root = _view = _active = nullptr;
+
+            refresh();
         }
 
         unsigned long Space::_colorPixel(const char *const &cc) {
@@ -148,7 +160,7 @@ namespace wm {
                         grand_parent->_children.erase(parent->_parent_iter);
                     }
                     sibling->_parent = grand_parent;
-                    sibling->_configure(parent->_hv, parent->_x, parent->_y, parent->_width, parent->_height);
+                    sibling->_configure(Attribute(parent->_attribute));
                     delete parent;
                     return sibling;
                 } else if (parent->_children.size() > 1) {
@@ -159,33 +171,25 @@ namespace wm {
             return nullptr;
         }
 
-        void Space::_focus(Node *const &node, const bool &from_root) {
-            if (from_root) {
-                for (auto i = node; i->_parent; ({
-                    i->_parent->_iter_active = i->_parent_iter;
-                    i = i->_parent;
-                }));
-            } else {
-                for (auto i = node; i->_parent && i->_parent->_iter_active != i->_parent_iter; ({
-                    i->_parent->_iter_active = i->_parent_iter;
-                    i = i->_parent;
-                }));
-            }
-            auto leaf = node->_getActiveLeaf();
-            if (_active != leaf) {
-                if (_active) XSetWindowBorder(_display, _active->_window, _normal_pixel);
-                XSetWindowBorder(_display, leaf->_window, _focus_pixel);
-                _active = leaf;
-                XSetInputFocus(_display, leaf->_window, RevertToNone, CurrentTime);
-            }
+        void Space::_activate(Node *const &node) {
+            for (auto i = node; i->_parent && i->_parent->_iter_active != i->_parent_iter; ({
+                i->_parent->_iter_active = i->_parent_iter;
+                i = i->_parent;
+            }));
         }
 
-        void Space::refresh(const bool &first_time) {
+        void Space::refresh() {
+            static bool called = false;
+
             _display_width = (unsigned int) XDisplayWidth(_display, DefaultScreen(_display));
             _display_height = (unsigned int) XDisplayHeight(_display, DefaultScreen(_display));
-            if (first_time) _display_hv = (HV) (_display_width >= _display_height);
+            XResizeWindow(_display, _mask_layer, _display_width, _display_height);
+            if (!called) {
+                called = true;
+                _display_hv = (HV) (_display_width >= _display_height);
+            }
             if (_view) {
-                _view->_configure(_display_hv, -config::border_width, -config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2);
+                _view->_configure({_display_hv, -(int) config::border_width, -(int) config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2});
                 _view->_refresh();
             }
         }
@@ -195,30 +199,47 @@ namespace wm {
         }
 
         void Space::focus(const HV &hv, const FB &fb) {
-            if (_active && _active != _view) {
-                if (_active->_parent->_hv == hv) {
-                    auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
-                    if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
-                    _focus((*i)->_setActiveLeaf(FB(!fb)), false);
-                } else if (_active->_parent != _view) {
-                    auto i = std::next(_active->_parent->_parent_iter, fb ? 1 : -1);
-                    if (i == _active->_parent->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
-                    _focus((*i)->_setActiveLeaf(FB(!fb)), false);
-                }
+            Node *sibling = nullptr;
+            for (Node *node = _active; node && node != _view; ({
+                auto parent = node->_parent;
+                if (parent->_attribute.hv == hv) {
+                    auto i = std::next(node->_parent_iter, fb ? 1 : -1);
+                    if (i == parent->_children.end()) {
+                        auto grand_parent = parent->_parent;
+                        if (parent == _view || grand_parent == _view) {
+                            i = std::next(i, fb ? 1 : -1);
+                            sibling = *i;
+
+                            node = nullptr;
+                        } else node = grand_parent;
+                    } else {
+                        sibling = *i;
+
+                        node = nullptr;
+                    }
+                } else node = parent;
+            }));
+
+            if (sibling) {
+                _activate(sibling);
+                auto leaf = sibling->_activeLeaf(FB(!fb));
+                _active->_focus(false);
+                leaf->_focus(true);
+                _active = leaf;
             }
         }
 
         void Space::move(const HV &hv, const FB &fb) {
-            if (_active && _active != _view && _active->_parent->_hv == hv) {
+            if (_active && _active != _view && _active->_parent->_attribute.hv == hv) {
                 _move(_active, std::next(_active->_parent_iter, 0.5 + 1.5 * (fb ? 1 : -1)));
+                _activate(_active);
                 _active->_parent->_refresh();
-                _focus(_active, false);
-                _pointer_coordinate._record();
+                _pointer_coordinate.record();
             }
         }
 
         void Space::join(const HV &hv, const FB &fb) {
-            if (_active && _active != _view && _active->_parent->_hv == hv) {
+            if (_active && _active != _view && _active->_parent->_attribute.hv == hv) {
                 std::list<std::function<void()>> fl;
                 if (_active->_parent->_children.size() == 2) {
                     fl.emplace_back([&]() {
@@ -245,44 +266,69 @@ namespace wm {
                 auto sibling = *i;
                 _quit(_active);
                 _join(_active, sibling, FB(!fb));
+                _activate(_active);
 
                 for (auto j = fl.cbegin(); j != fl.cend(); ({
                     (*j)();
                     j++;
                 }));
 
-                _focus(_active, false);
-                _pointer_coordinate._record();
+                _pointer_coordinate.record();
             }
         }
 
         void Space::quit(const HV &hv, const FB &fb) {
-            if (_active && _active != _view && _active->_parent->_hv != hv) {
-                if (_active->_parent == _view) {
+            if (_active && _active != _view && _active->_parent->_attribute.hv != hv) {
+                if (_view == _active->_parent) {
+                    std::list<std::function<void()>> fl;
+
+                    auto attribute = Attribute(_view->_attribute);
                     if (_root == _view) {
+                        fl.emplace_back([&]() {
+                            _root = _view;
+                        });
+
                         auto rest = _quit(_active);
-                        _active->_configure(rest->_hv, rest->_x, rest->_y, rest->_width, rest->_height);
                         _join(rest, _active, FB(!fb));
-                        _active->_parent->_refresh();
-                        _root = _view = _active->_parent;
                     } else {
-                        //...
+                        auto rest = _quit(_active);
+                        _activate(rest);
+                        _join(_active, rest->_parent, fb);
+                        _quit(rest);
+                        _join(rest, _active, FB(!fb));
                     }
+                    _active->_parent->_configure(std::move(attribute));
+                    _view = _active->_parent;
+
+                    for (auto j = fl.cbegin(); j != fl.cend(); ({
+                        (*j)();
+                        j++;
+                    }));
                 } else {
                     auto rest = _quit(_active);
-                    rest->_parent->_iter_active = rest->_parent_iter;
+                    _activate(rest);
                     _join(_active, rest->_parent, fb);
-                    _active->_parent->_refresh();
                 }
+                _activate(_active);
+                _active->_parent->_refresh();
+                _pointer_coordinate.record();
+            }
+        }
 
-                _focus(_active, false);
-                _pointer_coordinate._record();
+        void Space::review(const FB &fb) {
+            auto new_view = (fb ? _view->_activeChild() : _view->_parent);
+            if (new_view) {
+                new_view->_configure(Attribute(_view->_attribute));
+                XRaiseWindow(_display, _mask_layer);
+                new_view->_refresh();
+                _view = new_view;
+                _pointer_coordinate.record();
             }
         }
 
         void Space::transpose() {
             _display_hv = HV(!_display_hv);
-            refresh();
+            _view->_refresh();
         }
 
         Node::Node(Space *const &space) : _space(space) {
@@ -291,12 +337,8 @@ namespace wm {
 
         Node::~Node() = default;
 
-        void Node::_configure(const HV &hv, const int &x, const int &y, const unsigned int &width, const unsigned int &height) {
-            _hv = hv;
-            _x = x;
-            _y = y;
-            _width = width;
-            _height = height;
+        void Node::_configure(Attribute &&attribute) {
+            _attribute = std::move(attribute);
         }
 
         namespace node {
@@ -313,18 +355,23 @@ namespace wm {
             }
 
             void Leaf::_refresh() {
-                XMoveResizeWindow(_space->_display, _window, _x, _y, _width - config::border_width * 2, _height - config::border_width * 2);
+                XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);
+                XRaiseWindow(_space->_display, _window);
             }
 
-            node::Leaf *Leaf::_getActiveLeaf() {
+            Leaf *Leaf::_activeLeaf() {
                 return this;
             }
 
-            node::Leaf *Leaf::_setActiveLeaf(const FB &) {
+            Leaf *Leaf::_activeLeaf(const FB &) {
                 return this;
             }
 
-            node::Branch *node::Leaf::_receive(Node *const &node, const FB &fb) {
+            Node *Leaf::_activeChild() {
+                return this;
+            }
+
+            Branch *Leaf::_receive(Node *const &node, const FB &fb) {
                 auto new_parent = new Branch(_space);
                 if (_parent) {
                     new_parent->_parent_iter = _parent->_children.insert(_parent_iter, new_parent);
@@ -335,14 +382,21 @@ namespace wm {
                 _parent = new_parent;
                 node->_parent_iter = new_parent->_children.insert(fb ? new_parent->_children.end() : new_parent->_children.begin(), node);
                 node->_parent = new_parent;
-                new_parent->_configure(_hv, _x, _y, _width, _height);
+                new_parent->_configure(Attribute(_attribute));
                 return new_parent;
+            }
+
+            void Leaf::_focus(const bool &yes) {
+                if (yes) {
+                    XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
+                    XSetInputFocus(_space->_display, _window, RevertToNone, CurrentTime);
+                } else XSetWindowBorder(_space->_display, _window, _space->_normal_pixel);
             }
 
             Branch::Branch(Space *const &space) : Node(space) {}
 
-            void Branch::_configure(const HV &hv, const int &x, const int &y, const unsigned int &width, const unsigned int &height) {
-                Node::_configure(hv, x, y, width, height);
+            void Branch::_configure(Attribute &&attribute) {
+                Node::_configure(std::move(attribute));
                 _configureChildren();
             }
 
@@ -350,16 +404,20 @@ namespace wm {
                 for (auto i = _children.cbegin(); i != _children.cend(); (*i++)->_refresh());
             }
 
-            node::Leaf *Branch::_getActiveLeaf() {
-                return (*_iter_active)->_getActiveLeaf();
+            Leaf *Branch::_activeLeaf() {
+                return (*_iter_active)->_activeLeaf();
             }
 
-            node::Leaf *Branch::_setActiveLeaf(const FB &fb) {
+            Leaf *Branch::_activeLeaf(const FB &fb) {
                 if (_iter_active == _children.end()) _iter_active = (fb ? std::prev(_children.end()) : _children.begin());
-                return (*_iter_active)->_setActiveLeaf(fb);
+                return (*_iter_active)->_activeLeaf(fb);
             }
 
-            node::Branch *Branch::_receive(Node *const &node, const FB &fb) {
+            Node *Branch::_activeChild() {
+                return *_iter_active;
+            }
+
+            Branch *Branch::_receive(Node *const &node, const FB &fb) {
                 node->_parent_iter = _children.insert(_iter_active == _children.end() ? (fb ? _children.end() : _children.begin()) : (fb ? std::next(_iter_active) : _iter_active), node);
                 node->_parent = this;
                 _configureChildren();
@@ -367,34 +425,38 @@ namespace wm {
             }
 
             void Branch::_configureChildren() {
-                switch (_hv) {
+                switch (_attribute.hv) {
                     case HV::HORIZONTAL: {
-                        auto s = _x + config::border_width;
-                        auto d = (_width - config::border_width * 2) / _children.size();
+                        auto s = (int) (_attribute.x + config::border_width);
+                        auto d = (unsigned int) ((_attribute.width - config::border_width * 2) / _children.size());
                         for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
-                            (*i)->_configure(HV(!_hv), s, _y + config::border_width, d, _height - config::border_width * 2);
+                            (*i)->_configure({HV(!_attribute.hv), s, _attribute.y + (int) config::border_width, d, _attribute.height - config::border_width * 2});
                             s += d;
                             i++;
                         }));
                         (*std::prev(_children.cend()))->_configure(
-                                HV(!_hv),
-                                s, _y + config::border_width,
-                                _x + _width - config::border_width - s, _height - config::border_width * 2
+                                {
+                                        HV(!_attribute.hv),
+                                        s, _attribute.y + (int) config::border_width,
+                                        _attribute.x + _attribute.width - config::border_width - s, _attribute.height - config::border_width * 2
+                                }
                         );
                         break;
                     }
                     case HV::VERTICAL: {
-                        auto s = _y + config::border_width;
-                        auto d = (_height - config::border_width * 2) / _children.size();
+                        auto s = (int) (_attribute.y + config::border_width);
+                        auto d = (unsigned int) ((_attribute.height - config::border_width * 2) / _children.size());
                         for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
-                            (*i)->_configure(HV(!_hv), _x + config::border_width, s, _width - config::border_width * 2, d);
+                            (*i)->_configure({HV(!_attribute.hv), _attribute.x + (int) config::border_width, s, _attribute.width - config::border_width * 2, d});
                             s += d;
                             i++;
                         }));
                         (*std::prev(_children.cend()))->_configure(
-                                HV(!_hv),
-                                _x + config::border_width, s,
-                                _width - config::border_width * 2, _y + _height - config::border_width - s
+                                {
+                                        HV(!_attribute.hv),
+                                        _attribute.x + (int) config::border_width, s,
+                                        _attribute.width - config::border_width * 2, _attribute.y + _attribute.height - config::border_width - s
+                                }
                         );
                     }
                 }

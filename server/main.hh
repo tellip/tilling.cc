@@ -27,6 +27,8 @@ namespace wm {
 
         class Space;
 
+        struct Attribute;
+
         class Node;
 
         namespace node {
