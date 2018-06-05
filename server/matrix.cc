@@ -78,15 +78,41 @@ namespace wm {
                                 {UnmapNotify,     [&](const XEvent &event) {
                                     auto i = _leaves.find(event.xconfigure.window);
                                     if (i != _leaves.end()) {
+                                        std::cout<<"--------------1\n";
                                         auto leaf = i->second;
-                                        if (leaf == _active && leaf->_parent) {
-                                            auto j = leaf->_parent_iter;
-                                            if (j == leaf->_parent->_children.begin()) j = std::next(j);
-                                            else j = std::prev(j);
-                                            leaf->_parent->_iter_active = j;
+                                        if (leaf == _active) {
+                                            if (leaf->_parent) {
+                                                auto j = leaf->_parent_iter;
+                                                if (j == leaf->_parent->_children.begin()) j = std::next(j);
+                                                else j = std::prev(j);
+                                                auto sibling = *j;
+                                                _activate(sibling);
+                                                auto new_active = sibling->_activeLeaf();
+                                                new_active->_focus(true);
+                                                _active = new_active;
+                                            } else _active = nullptr;
                                         }
-                                        auto rest = _quit(leaf);
+                                        Node *rest;
+                                        std::list<std::function<void()>> fl;
+                                        if (leaf == _view || (leaf->_parent == _view && leaf->_parent->_children.size() <= 2)) {
+                                            fl.emplace_back([&]() {
+                                                _view = rest;
+                                            });
+                                            if (_root == _view) {
+                                                fl.emplace_back([&]() {
+                                                    _root = _view;
+                                                });
+                                            }
+                                        }
+                                        rest = _quit(leaf);
                                         if (rest) rest->_refresh();
+                                        delete leaf;
+                                        for (auto j = fl.cbegin(); j != fl.cend(); ({
+                                            (*j)();
+                                            j++;
+                                        }));
+                                        _pointer_coordinate.record();
+                                        std::cout<<"--------------2\n";
                                     }
                                 }},
                                 {ConfigureNotify, [&](const XEvent &event) {
@@ -253,7 +279,7 @@ namespace wm {
             }
         }
 
-        void Space::alter(const HV &hv, const FB &fb) {
+        void Space::reparent(const HV &hv, const FB &fb) {
             if (_active && _active != _view) {
                 if (hv == _active->_parent->_attribute.hv) {
                     std::list<std::function<void()>> fl;
@@ -338,7 +364,9 @@ namespace wm {
         }
 
         void Space::transpose() {
-            _display_hv = HV(!_display_hv);
+            auto attribute = std::move(_view->_attribute);
+            attribute.hv = _display_hv = HV(!_display_hv);
+            _view->_configure(std::move(attribute));
             _view->_refresh();
         }
 

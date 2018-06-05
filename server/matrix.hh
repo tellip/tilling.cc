@@ -64,7 +64,7 @@ namespace wm {
 
             void move(const HV &, const FB &);
 
-            void alter(const HV &, const FB &);
+            void reparent(const HV &, const FB &);
 
             void review(const FB &);
 
@@ -222,17 +222,17 @@ namespace wm {
 //                        space.quit(HV::HORIZONTAL, FB::BACKWARD);
 //                    }},
 
-                    {"alter-up",     [&]() {
-                        space.alter(HV::VERTICAL, FB::BACKWARD);
+                    {"reparent-up",     [&]() {
+                        space.reparent(HV::VERTICAL, FB::BACKWARD);
                     }},
-                    {"alter-right",  [&]() {
-                        space.alter(HV::HORIZONTAL, FB::FORWARD);
+                    {"reparent-right",  [&]() {
+                        space.reparent(HV::HORIZONTAL, FB::FORWARD);
                     }},
-                    {"alter-down",   [&]() {
-                        space.alter(HV::VERTICAL, FB::FORWARD);
+                    {"reparent-down",   [&]() {
+                        space.reparent(HV::VERTICAL, FB::FORWARD);
                     }},
-                    {"alter-left",   [&]() {
-                        space.alter(HV::HORIZONTAL, FB::BACKWARD);
+                    {"reparent-left",   [&]() {
+                        space.reparent(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
                     {"review-in",   [&]() {
