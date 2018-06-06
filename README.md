@@ -22,7 +22,7 @@ cd [path_to_repo]
 ./build.sh
 ln -s [path_to_repo]/cmake-build/matwm path_to_binary
 ln -s [path_to_repo]/cmake-build/matc path_to_binary
-nano ~/.xinitrc # add "exec matwm"
-nano [path_to_config]/sxhkdrc # refer to "sxhkdrc.sample"
+nano ~/.xinitrc # refer to xinitrc.sample
+nano [path_to_config]/sxhkdrc # refer to sxhkdrc.sample
 startx
 ```
