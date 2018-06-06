@@ -1,6 +1,6 @@
 ## Description
 
-*matwm* is a tilling window manager that represents windows as the leaves of a pure tree.
+*matwm* is a tilling window manager that represents windows as the leaves of a pure general, customizable tree.
 
 It only responds to X events, and the messages it receives on a dedicated socket.
 
