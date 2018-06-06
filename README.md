@@ -4,6 +4,13 @@
 
 It only responds to X events, and the messages it receives on a dedicated socket.
 
-*bspc* is a program that writes messages on *bspwm*'s socket.
+*matc* is a program that writes messages on *matwm*'s socket.
 
-*bspwm* doesn't handle any keyboard inputs: a third party program (e.g. *sxhkd*) is needed in order to translate keyboard events to *bspc* invocations.
+*matwm* doesn't handle any keyboard inputs: a third party program (e.g. *sxhkd*) is needed in order to translate keyboard events to *matc* invocations.
+
+The outlined architecture is the following:
+
+```
+        PROCESS          SOCKET
+sxhkd  -------->  matc  <------>  matwm
+```
