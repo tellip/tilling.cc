@@ -6,5 +6,5 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lX11 -lpthread")
 
 FILE(GLOB Public *.hh)
 FILE(GLOB Server server/*.hh server/*.cc)
-add_executable(server ${Public} ${Server})
-add_executable(client client.cc ${Public})
+add_executable(bin/server ${Public} ${Server})
+add_executable(bin/client client.cc ${Public})
