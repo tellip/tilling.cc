@@ -13,7 +13,6 @@ super + Return
 super + l
 	i3lock -c 466BB0 -n
 
-
 super + shift + e
 	matc --exit
 super + {_,shift +,alt +} {Up,Right,Down,Left}
