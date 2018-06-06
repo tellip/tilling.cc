@@ -18,12 +18,10 @@ sxhkd  -------->  matc  <------>  matwm
 ## Usage
 
 ```
-cd path_to_git
-git clone [this_repo.git]
-cd [this_repo]
 ./build.sh
 ln -s cmake-build/matwm path_to_binary
 ln -s cmake-build/matc path_to_binary
 nano ~/.xinitrc # add "exec matwm"
 nano path_to_config/sxhkdrc # refer to "sxhkdrc.sample"
+startx
 ```
