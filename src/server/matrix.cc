@@ -1,3 +1,4 @@
+#include <X11/Xlib.h>
 #include "matrix.hh"
 
 namespace wm {
@@ -469,10 +470,14 @@ namespace wm {
             }
 
             void Leaf::_focus(const bool &yes) {
-                if (yes) {
-                    XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
-                    XSetInputFocus(_space->_display, _window, RevertToParent, CurrentTime);
-                } else XSetWindowBorder(_space->_display, _window, _space->_normal_pixel);
+                XWindowAttributes wa;
+                XGetWindowAttributes(_space->_display, _window, &wa);
+                if (wa.map_state) {
+                    if (yes) {
+                        XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
+                        XSetInputFocus(_space->_display, _window, RevertToParent, CurrentTime);
+                    } else XSetWindowBorder(_space->_display, _window, _space->_normal_pixel);
+                }
             }
 
             Branch::Branch(Space *const &space) : Node(space) {}
