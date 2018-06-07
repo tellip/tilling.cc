@@ -87,7 +87,9 @@ namespace wm {
                                                 auto sibling = *j;
                                                 _activate(sibling);
                                                 _active = sibling->_activeLeaf(FB::FORWARD);
-                                                _active->_focus(true);
+                                                XWindowAttributes wa;
+                                                XGetWindowAttributes(_display, _active->_window, &wa);
+                                                if (wa.map_state) _active->_focus(true);
                                             } else _active = nullptr;
                                         }
                                         Node *rest;
@@ -470,14 +472,10 @@ namespace wm {
             }
 
             void Leaf::_focus(const bool &yes) {
-                XWindowAttributes wa;
-                XGetWindowAttributes(_space->_display, _window, &wa);
-                if (wa.map_state) {
-                    if (yes) {
-                        XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
-                        XSetInputFocus(_space->_display, _window, RevertToParent, CurrentTime);
-                    } else XSetWindowBorder(_space->_display, _window, _space->_normal_pixel);
-                }
+                if (yes) {
+                    XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
+                    XSetInputFocus(_space->_display, _window, RevertToParent, CurrentTime);
+                } else XSetWindowBorder(_space->_display, _window, _space->_normal_pixel);
             }
 
             Branch::Branch(Space *const &space) : Node(space) {}
