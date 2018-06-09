@@ -436,6 +436,12 @@ namespace wm {
                     _window(window),
                     _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
                 XSetWindowBorderWidth(space->_display, window, config::border_width);
+                XWindowAttributes wa;
+                XGetWindowAttributes(space->_display, window, &wa);
+                _attribute.x = wa.x;
+                _attribute.y = wa.y;
+                _attribute.width = wa.width + config::border_width * 2;
+                _attribute.height = wa.height + config::border_width * 2;
                 XSelectInput(space->_display, window, leaf_event_mask);
             }
 
