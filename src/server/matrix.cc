@@ -87,9 +87,7 @@ namespace wm {
                                                 auto sibling = *j;
                                                 _activate(sibling);
                                                 _active = sibling->_activeLeaf(FB::FORWARD);
-                                                XWindowAttributes wa;
-                                                XGetWindowAttributes(_display, _active->_window, &wa);
-                                                if (wa.map_state) _active->_focus(true);
+                                                if (_mapState(_active->_window)) _active->_focus(true);
                                             } else _active = nullptr;
                                         }
                                         Node *rest;
@@ -136,7 +134,7 @@ namespace wm {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (leaf != _active && _active) XSetInputFocus(_display, _active->_window, RevertToParent, CurrentTime);
+                                        if (leaf != _active && _active && _mapState(_active->_window)) XSetInputFocus(_display, _active->_window, RevertToParent, CurrentTime);
                                     }
                                 }},
                                 {EnterNotify,     [&](const XEvent &event) {
@@ -170,6 +168,12 @@ namespace wm {
             XColor x_color;
             if (XAllocNamedColor(_display, cm, cc, &x_color, &x_color) == 0) error("XAllocNamedColor");
             return x_color.pixel;
+        }
+
+        int Space::_mapState(const Window &window) {
+            XWindowAttributes wa;
+            XGetWindowAttributes(_display, window, &wa);
+            return wa.map_state;
         }
 
         node::Branch *Space::_join(Node *const &node, Node *const &target, const FB &fb) {

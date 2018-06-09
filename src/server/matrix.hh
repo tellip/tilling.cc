@@ -47,6 +47,8 @@ namespace wm {
         private:
             unsigned long _colorPixel(const char *const &);
 
+            int _mapState(const Window &);
+
             node::Branch *_join(Node *const &, Node *const &, const FB &);
 
             void _move(Node *const &, const std::list<Node *>::iterator &);
