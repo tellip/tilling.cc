@@ -87,7 +87,7 @@ namespace wm {
                                                 auto sibling = *j;
                                                 _activate(sibling);
                                                 _active = sibling->_activeLeaf(FB::FORWARD);
-                                                if (_mapState(_active->_window)) _active->_focus(true);
+                                                _active->_focus(true);
                                             } else _active = nullptr;
                                         }
                                         Node *rest;
@@ -118,23 +118,14 @@ namespace wm {
                                     auto i = _leaves.find(event.xconfigure.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        XWindowAttributes wa;
-                                        XGetWindowAttributes(_display, leaf->_window, &wa);
-                                        if ((
-                                                wa.x != leaf->_attribute.x ||
-                                                wa.y != leaf->_attribute.y ||
-                                                wa.width != leaf->_attribute.width - config::border_width * 2 ||
-                                                wa.height != leaf->_attribute.height - config::border_width * 2
-                                        )) {
-                                            leaf->_refresh();
-                                        }
+                                        if (!leaf->_checkAttribute()) leaf->_refresh();
                                     }
                                 }},
                                 {FocusIn,         [&](const XEvent &event) {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (leaf != _active && _active && _mapState(_active->_window)) XSetInputFocus(_display, _active->_window, RevertToParent, CurrentTime);
+                                        if (leaf != _active && _active && _windowAttribute(_active->_window).map_state) XSetInputFocus(_display, _active->_window, RevertToParent, CurrentTime);
                                     }
                                 }},
                                 {EnterNotify,     [&](const XEvent &event) {
@@ -170,10 +161,10 @@ namespace wm {
             return x_color.pixel;
         }
 
-        int Space::_mapState(const Window &window) {
+        XWindowAttributes Space::_windowAttribute(const Window &window) {
             XWindowAttributes wa;
             XGetWindowAttributes(_display, window, &wa);
-            return wa.map_state;
+            return wa;
         }
 
         node::Branch *Space::_join(Node *const &node, Node *const &target, const FB &fb) {
@@ -409,7 +400,7 @@ namespace wm {
         }
 
         void Space::closeActive(const bool &force) {
-            if (_active) {
+            if (_active && _windowAttribute(_active->_window).map_state) {
                 if (force) XDestroyWindow(_display, _active->_window);
                 else {
                     XEvent event;
@@ -439,14 +430,15 @@ namespace wm {
                     Node(space),
                     _window(window),
                     _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
-                XSetWindowBorderWidth(space->_display, window, config::border_width);
-                XWindowAttributes wa;
-                XGetWindowAttributes(space->_display, window, &wa);
-                _attribute.x = wa.x;
-                _attribute.y = wa.y;
-                _attribute.width = wa.width + config::border_width * 2;
-                _attribute.height = wa.height + config::border_width * 2;
-                XSelectInput(space->_display, window, leaf_event_mask);
+                auto wa = space->_windowAttribute(window);
+                if (wa.map_state) {
+                    XSetWindowBorderWidth(space->_display, window, config::border_width);
+                    _attribute.x = wa.x;
+                    _attribute.y = wa.y;
+                    _attribute.width = wa.width + config::border_width * 2;
+                    _attribute.height = wa.height + config::border_width * 2;
+                    XSelectInput(space->_display, window, leaf_event_mask);
+                }
             }
 
             Leaf::~Leaf() {
@@ -454,8 +446,11 @@ namespace wm {
             }
 
             void Leaf::_refresh() {
-                XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);
-                XRaiseWindow(_space->_display, _window);
+                auto wa = _space->_windowAttribute(_window);
+                if (wa.map_state) {
+                    XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);;
+                    XRaiseWindow(_space->_display, _window);
+                }
             }
 
             Leaf *Leaf::_activeLeaf(const FB &) {
@@ -482,10 +477,22 @@ namespace wm {
             }
 
             void Leaf::_focus(const bool &yes) {
-                if (yes) {
-                    XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
-                    XSetInputFocus(_space->_display, _window, RevertToParent, CurrentTime);
-                } else XSetWindowBorder(_space->_display, _window, _space->_normal_pixel);
+                if (_space->_windowAttribute(_window).map_state) {
+                    if (yes) {
+                        XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
+                        XSetInputFocus(_space->_display, _window, RevertToParent, CurrentTime);
+                    } else XSetWindowBorder(_space->_display, _window, _space->_normal_pixel);
+                }
+            }
+
+            bool Leaf::_checkAttribute() {
+                auto wa = _space->_windowAttribute(_window);
+                return (
+                        wa.x == _attribute.x &&
+                        wa.y == _attribute.y &&
+                        wa.width == _attribute.width - config::border_width * 2 &&
+                        wa.height == _attribute.height - config::border_width * 2
+                );
             }
 
             Branch::Branch(Space *const &space) : Node(space) {}

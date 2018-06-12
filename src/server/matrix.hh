@@ -47,7 +47,7 @@ namespace wm {
         private:
             unsigned long _colorPixel(const char *const &);
 
-            int _mapState(const Window &);
+            XWindowAttributes _windowAttribute(const Window &);
 
             node::Branch *_join(Node *const &, Node *const &, const FB &);
 
@@ -134,6 +134,8 @@ namespace wm {
                 node::Branch *_receive(Node *const &, const FB &) final;
 
                 void _focus(const bool &);
+
+                bool _checkAttribute();
 
                 friend Space;
             };
