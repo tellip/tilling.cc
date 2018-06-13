@@ -23,6 +23,10 @@ namespace wm {
         };
 
         class Space {
+            static bool _has_error;
+
+            static int _handleError(Display *, XErrorEvent *);
+
             const std::function<void()> _breakLoop;
             Display *const _display;
             const unsigned long _normal_pixel, _focus_pixel;
@@ -47,7 +51,9 @@ namespace wm {
         private:
             unsigned long _colorPixel(const char *const &);
 
-            XWindowAttributes _windowAttribute(const Window &);
+            static XWindowAttributes _window_attributes;
+
+            int _isMapped(const Window &);
 
             node::Branch *_join(Node *const &, Node *const &, const FB &);
 
@@ -56,6 +62,8 @@ namespace wm {
             Node *_quit(Node *const &);
 
             void _activate(Node *const &);
+
+//            static XWindowAttributes _window_attributes;
 
         public:
             void refresh();

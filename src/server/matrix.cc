@@ -25,6 +25,13 @@ namespace wm {
             });
         }
 
+        bool Space::_has_error;
+
+        int Space::_handleError(Display *, XErrorEvent *) {
+            _has_error = true;
+            return 0;
+        }
+
         Space::Space(Display *const &display, const std::function<void()> &break_) :
                 _breakLoop(break_),
                 _display(display),
@@ -125,7 +132,7 @@ namespace wm {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (leaf != _active && _active && _windowAttribute(_active->_window).map_state) XSetInputFocus(_display, _active->_window, RevertToParent, CurrentTime);
+                                        if (leaf != _active && _active && _isMapped(_active->_window)) XSetInputFocus(_display, _active->_window, RevertToParent, CurrentTime);
                                     }
                                 }},
                                 {EnterNotify,     [&](const XEvent &event) {
@@ -147,6 +154,7 @@ namespace wm {
                         }
                 ),
                 _pointer_coordinate(display) {
+            XSetErrorHandler(&_handleError);
             if (_xia_protocols == None || _xia_delete_window == None) error("XInternAtom");
             XMapWindow(_display, _mask_layer);
             _root = _view = _active = nullptr;
@@ -161,10 +169,12 @@ namespace wm {
             return x_color.pixel;
         }
 
-        XWindowAttributes Space::_windowAttribute(const Window &window) {
-            XWindowAttributes wa;
-            XGetWindowAttributes(_display, window, &wa);
-            return wa;
+        XWindowAttributes Space::_window_attributes;
+
+        int Space::_isMapped(const Window &window) {
+            _has_error = false;
+            XGetWindowAttributes(_display, window, &_window_attributes);
+            return !_has_error && _window_attributes.map_state;
         }
 
         node::Branch *Space::_join(Node *const &node, Node *const &target, const FB &fb) {
@@ -400,18 +410,20 @@ namespace wm {
         }
 
         void Space::closeActive(const bool &force) {
-            if (_active && _windowAttribute(_active->_window).map_state) {
-                if (force) XDestroyWindow(_display, _active->_window);
-                else {
-                    XEvent event;
-                    event.type = ClientMessage;
-                    event.xclient.window = _active->_window;
-                    event.xclient.message_type = _xia_protocols;
-                    event.xclient.format = 32;
-                    event.xclient.data.l[0] = _xia_delete_window;
-                    event.xclient.data.l[1] = CurrentTime;
-                    XSendEvent(_display, _active->_window, False, NoEventMask, &event);
-                }
+            if (_active) {
+                if (_isMapped(_active->_window)) {
+                    if (force) XDestroyWindow(_display, _active->_window);
+                    else {
+                        XEvent event;
+                        event.type = ClientMessage;
+                        event.xclient.window = _active->_window;
+                        event.xclient.message_type = _xia_protocols;
+                        event.xclient.format = 32;
+                        event.xclient.data.l[0] = _xia_delete_window;
+                        event.xclient.data.l[1] = CurrentTime;
+                        XSendEvent(_display, _active->_window, False, NoEventMask, &event);
+                    }
+                } else /*...*/;
             } else if (_exiting) _breakLoop();
         }
 
@@ -430,13 +442,12 @@ namespace wm {
                     Node(space),
                     _window(window),
                     _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
-                auto wa = space->_windowAttribute(window);
-                if (wa.map_state) {
+                if (space->_isMapped(window)) {
                     XSetWindowBorderWidth(space->_display, window, config::border_width);
-                    _attribute.x = wa.x;
-                    _attribute.y = wa.y;
-                    _attribute.width = wa.width + config::border_width * 2;
-                    _attribute.height = wa.height + config::border_width * 2;
+                    _attribute.x = Space::_window_attributes.x;
+                    _attribute.y = Space::_window_attributes.y;
+                    _attribute.width = Space::_window_attributes.width + config::border_width * 2;
+                    _attribute.height = Space::_window_attributes.height + config::border_width * 2;
                     XSelectInput(space->_display, window, leaf_event_mask);
                 }
             }
@@ -446,8 +457,7 @@ namespace wm {
             }
 
             void Leaf::_refresh() {
-                auto wa = _space->_windowAttribute(_window);
-                if (wa.map_state) {
+                if (_space->_isMapped(_window)) {
                     XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);;
                     XRaiseWindow(_space->_display, _window);
                 }
@@ -477,7 +487,7 @@ namespace wm {
             }
 
             void Leaf::_focus(const bool &yes) {
-                if (_space->_windowAttribute(_window).map_state) {
+                if (_space->_isMapped(_window)) {
                     if (yes) {
                         XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
                         XSetInputFocus(_space->_display, _window, RevertToParent, CurrentTime);
@@ -486,12 +496,12 @@ namespace wm {
             }
 
             bool Leaf::_checkAttribute() {
-                auto wa = _space->_windowAttribute(_window);
                 return (
-                        wa.x == _attribute.x &&
-                        wa.y == _attribute.y &&
-                        wa.width == _attribute.width - config::border_width * 2 &&
-                        wa.height == _attribute.height - config::border_width * 2
+                        _space->_isMapped(_window) &&
+                        Space::_window_attributes.x == _attribute.x &&
+                        Space::_window_attributes.y == _attribute.y &&
+                        Space::_window_attributes.width == _attribute.width - config::border_width * 2 &&
+                        Space::_window_attributes.height == _attribute.height - config::border_width * 2
                 );
             }
 
