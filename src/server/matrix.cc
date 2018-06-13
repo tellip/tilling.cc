@@ -423,7 +423,7 @@ namespace wm {
                         event.xclient.data.l[1] = CurrentTime;
                         XSendEvent(_display, _active->_window, False, NoEventMask, &event);
                     }
-                } else /*...*/;
+                }
             } else if (_exiting) _breakLoop();
         }
 
