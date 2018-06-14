@@ -11,7 +11,7 @@ super + d
 super + Return
 	termite
 super + l
-	i3lock -c 466BB0 -n
+	slock
 
 super + shift + e
 	matc --exit

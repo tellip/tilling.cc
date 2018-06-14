@@ -125,7 +125,7 @@ namespace wm {
                                     auto i = _leaves.find(event.xconfigure.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (!leaf->_checkAttribute()) leaf->_refresh();
+                                        leaf->_refresh();
                                     }
                                 }},
                                 {FocusIn,         [&](const XEvent &event) {
@@ -366,6 +366,7 @@ namespace wm {
                 new_view->_configure(_view->_attribute);
                 XRaiseWindow(_display, _mask_layer);
                 new_view->_refresh();
+                new_view->_raise();
                 _view = new_view;
                 _pointer_coordinate.record();
             }
@@ -380,6 +381,7 @@ namespace wm {
                 new_view->_configure(_view->_attribute);
                 XRaiseWindow(_display, _mask_layer);
                 new_view->_refresh();
+                new_view->_raise();
                 _activate(new_view);
                 auto new_active = new_view->_activeLeaf(FB(!fb));
                 _active->_focus(false);
@@ -397,6 +399,7 @@ namespace wm {
                 new_view->_configure(_view->_attribute);
                 XRaiseWindow(_display, _mask_layer);
                 new_view->_refresh();
+                new_view->_raise();
                 _view = new_view;
                 _pointer_coordinate.record();
             }
@@ -457,10 +460,18 @@ namespace wm {
             }
 
             void Leaf::_refresh() {
-                if (_space->_isMapped(_window)) {
-                    XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);;
-                    XRaiseWindow(_space->_display, _window);
+                if (_space->_isMapped(_window) && (
+                        Space::_window_attributes.x != _attribute.x ||
+                        Space::_window_attributes.y != _attribute.y ||
+                        Space::_window_attributes.width != _attribute.width - config::border_width * 2 ||
+                        Space::_window_attributes.height != _attribute.height - config::border_width * 2
+                )) {
+                    XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);
                 }
+            }
+
+            void Leaf::_raise() {
+                XRaiseWindow(_space->_display, _window);
             }
 
             Leaf *Leaf::_activeLeaf(const FB &) {
@@ -495,16 +506,6 @@ namespace wm {
                 }
             }
 
-            bool Leaf::_checkAttribute() {
-                return (
-                        _space->_isMapped(_window) &&
-                        Space::_window_attributes.x == _attribute.x &&
-                        Space::_window_attributes.y == _attribute.y &&
-                        Space::_window_attributes.width == _attribute.width - config::border_width * 2 &&
-                        Space::_window_attributes.height == _attribute.height - config::border_width * 2
-                );
-            }
-
             Branch::Branch(Space *const &space) : Node(space) {}
 
             void Branch::_configure(const Attribute &attribute) {
@@ -514,6 +515,10 @@ namespace wm {
 
             void Branch::_refresh() {
                 for (auto i = _children.cbegin(); i != _children.cend(); (*i++)->_refresh());
+            }
+
+            void Branch::_raise() {
+                for (auto i = _children.cbegin(); i != _children.cend(); (*i++)->_raise());
             }
 
             Leaf *Branch::_activeLeaf(const FB &fb) {
@@ -538,9 +543,8 @@ namespace wm {
                         auto s = (int) (_attribute.x + config::border_width);
                         auto d = (unsigned int) ((_attribute.width - config::border_width * 2) / _children.size());
                         for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
-                            (*i)->_configure({HV(!_attribute.hv), s, _attribute.y + (int) config::border_width, d, _attribute.height - config::border_width * 2});
+                            (*i++)->_configure({HV(!_attribute.hv), s, _attribute.y + (int) config::border_width, d, _attribute.height - config::border_width * 2});
                             s += d;
-                            i++;
                         }));
                         (*std::prev(_children.cend()))->_configure(
                                 {
@@ -555,9 +559,8 @@ namespace wm {
                         auto s = (int) (_attribute.y + config::border_width);
                         auto d = (unsigned int) ((_attribute.height - config::border_width * 2) / _children.size());
                         for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
-                            (*i)->_configure({HV(!_attribute.hv), _attribute.x + (int) config::border_width, s, _attribute.width - config::border_width * 2, d});
+                            (*i++)->_configure({HV(!_attribute.hv), _attribute.x + (int) config::border_width, s, _attribute.width - config::border_width * 2, d});
                             s += d;
-                            i++;
                         }));
                         (*std::prev(_children.cend()))->_configure(
                                 {

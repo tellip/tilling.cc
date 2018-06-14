@@ -113,6 +113,8 @@ namespace wm {
 
             virtual void _refresh()=0;
 
+            virtual void _raise()=0;
+
             virtual node::Leaf *_activeLeaf(const FB &)=0;
 
             virtual Node *_activeChild()=0;
@@ -135,6 +137,8 @@ namespace wm {
 
                 void _refresh() final;
 
+                void _raise() final;
+
                 node::Leaf *_activeLeaf(const FB &) final;
 
                 Node *_activeChild() final;
@@ -142,8 +146,6 @@ namespace wm {
                 node::Branch *_receive(Node *const &, const FB &) final;
 
                 void _focus(const bool &);
-
-                bool _checkAttribute();
 
                 friend Space;
             };
@@ -157,6 +159,8 @@ namespace wm {
                 void _configure(const Attribute &) final;
 
                 void _refresh() final;
+
+                void _raise() final;
 
                 node::Leaf *_activeLeaf(const FB &) final;
 
