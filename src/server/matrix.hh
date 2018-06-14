@@ -184,6 +184,10 @@ namespace wm {
                         space.exit();
                     }},
 
+                    {"refresh",        [&]() {
+                        space.refresh();
+                    }},
+
                     {"focus-up",       [&]() {
                         space.focus(HV::VERTICAL, FB::BACKWARD);
                     }},

@@ -15,6 +15,8 @@ super + l
 
 super + shift + e
 	matc --exit
+super + F5
+	matc --refresh
 super + {_,shift +,alt +} {Up,Right,Down,Left}
 	matc --{focus,move,reparent}-{up,right,down,left}
 super + {Escape,grave}

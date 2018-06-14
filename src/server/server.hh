@@ -30,6 +30,13 @@ namespace wm {
             const auto display = XOpenDisplay(nullptr);
             if (display == nullptr) error("XOpenDisplay");
 
+            ({
+                Window root, parent, *children;
+                unsigned int children_size;
+                XQueryTree(display, XDefaultRootWindow(display), &root, &parent, &children, &children_size);
+                if (children_size) error("child windows already existing");
+            });
+
             bool looping = false;
             callback(
                     display,

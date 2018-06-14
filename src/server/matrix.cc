@@ -101,6 +101,7 @@ namespace wm {
                                         std::list<std::function<void()>> fl;
                                         if (leaf == _view || (leaf->_parent == _view && leaf->_parent->_children.size() <= 2)) {
                                             fl.emplace_back([&]() {
+                                                rest->_raise();
                                                 _view = rest;
                                             });
                                             if (_root == _view) {
@@ -236,9 +237,11 @@ namespace wm {
                 called = true;
                 _display_hv = (HV) (_display_width >= _display_height);
             }
+            XRaiseWindow(_display, _mask_layer);
             if (_view) {
                 _view->_configure({_display_hv, -(int) config::border_width, -(int) config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2});
                 _view->_refresh();
+                _view->_raise();
             }
         }
 
