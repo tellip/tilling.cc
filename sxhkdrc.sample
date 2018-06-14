@@ -19,7 +19,7 @@ super + {_,shift +,alt +} {Up,Right,Down,Left}
 	matc --{focus,move,reparent}-{up,right,down,left}
 super + {Escape,grave}
 	matc --view-{out,in}
-super + {f,r}
+super + {f,shift + f}
 	matc --view-{leaf,root}
 super + {shift + Tab,Tab}
 	matc --view-{backward,forward}

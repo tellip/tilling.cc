@@ -63,8 +63,6 @@ namespace wm {
 
             void _activate(Node *const &);
 
-//            static XWindowAttributes _window_attributes;
-
         public:
             void refresh();
 
