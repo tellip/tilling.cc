@@ -101,8 +101,8 @@ namespace wm {
                                         std::list<std::function<void()>> fl;
                                         if (leaf == _view || (leaf->_parent == _view && leaf->_parent->_children.size() <= 2)) {
                                             fl.emplace_back([&]() {
-                                                rest->_raise();
-                                                if (rest) _view = rest;
+                                                if (rest) rest->_raise();
+                                                _view = rest;
                                             });
                                             if (_root == _view) {
                                                 fl.emplace_back([&]() {
