@@ -48,6 +48,8 @@ namespace wm {
 
             Space(Display *const &, const std::function<void()> &);
 
+            ~Space();
+
         private:
             unsigned long _colorPixel(const char *const &);
 
@@ -153,6 +155,8 @@ namespace wm {
                 std::list<Node *>::iterator _iter_active;
 
                 explicit Branch(Space *const &);
+
+                ~Branch();
 
                 void _configure(const Attribute &) final;
 

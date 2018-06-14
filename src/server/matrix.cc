@@ -163,6 +163,11 @@ namespace wm {
             refresh();
         }
 
+        Space::~Space() {
+            delete _root;
+            _root = _view = _active = nullptr;
+        }
+
         unsigned long Space::_colorPixel(const char *const &cc) {
             auto cm = DefaultColormap(_display, XDefaultScreen(_display));
             XColor x_color;
@@ -510,6 +515,11 @@ namespace wm {
             }
 
             Branch::Branch(Space *const &space) : Node(space) {}
+
+            Branch::~Branch() {
+                for (auto i = _children.cbegin(); i != _children.cend(); delete *i++);
+                _children.clear();
+            }
 
             void Branch::_configure(const Attribute &attribute) {
                 Node::_configure(attribute);
