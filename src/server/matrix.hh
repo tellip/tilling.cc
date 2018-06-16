@@ -53,7 +53,7 @@ namespace wm {
         private:
             unsigned long _colorPixel(const char *const &);
 
-            static XWindowAttributes _window_attributes;
+            XWindowAttributes _window_attributes;
 
             int _isMapped(const Window &);
 

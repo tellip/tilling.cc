@@ -126,7 +126,36 @@ namespace wm {
                                     auto i = _leaves.find(event.xconfigure.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        leaf->_refresh();
+                                        if (_isMapped(leaf->_window)) {
+                                            if ((
+                                                    _window_attributes.x != leaf->_attribute.x ||
+                                                    _window_attributes.y != leaf->_attribute.y ||
+                                                    _window_attributes.width != leaf->_attribute.width - config::border_width * 2 ||
+                                                    _window_attributes.height != leaf->_attribute.height - config::border_width * 2
+                                            ))
+                                                leaf->_refresh();
+
+                                            Node *ancestor = leaf;
+                                            while (ancestor && ancestor != _view) ancestor = ancestor->_parent;
+
+                                            auto low = [&]() {
+                                                Window rtn = 0, root, parent, *children;
+                                                unsigned int children_size;
+                                                XQueryTree(_display, XDefaultRootWindow(_display), &root, &parent, &children, &children_size);
+                                                for (auto j = 0; j < children_size; ({
+                                                    auto child = children[j++];
+                                                    if (child == leaf->_window || child == _mask_layer) {
+                                                        rtn = child;
+                                                        j = children_size;
+                                                    }
+                                                }));
+                                                delete[] children;
+                                                return rtn;
+                                            }();
+                                            
+                                            if (low == _mask_layer && ancestor != _view) XLowerWindow(_display, leaf->_window);
+                                            else if (low == leaf->_window && ancestor == _view) XRaiseWindow(_display, leaf->_window);
+                                        }
                                     }
                                 }},
                                 {FocusIn,         [&](const XEvent &event) {
@@ -174,8 +203,6 @@ namespace wm {
             if (XAllocNamedColor(_display, cm, cc, &x_color, &x_color) == 0) error("XAllocNamedColor");
             return x_color.pixel;
         }
-
-        XWindowAttributes Space::_window_attributes;
 
         int Space::_isMapped(const Window &window) {
             _has_error = false;
@@ -237,11 +264,11 @@ namespace wm {
 
             _display_width = (unsigned int) XDisplayWidth(_display, DefaultScreen(_display));
             _display_height = (unsigned int) XDisplayHeight(_display, DefaultScreen(_display));
-            XResizeWindow(_display, _mask_layer, _display_width, _display_height);
             if (!called) {
                 called = true;
                 _display_hv = (HV) (_display_width >= _display_height);
             }
+            XResizeWindow(_display, _mask_layer, _display_width, _display_height);
             XRaiseWindow(_display, _mask_layer);
             if (_view) {
                 _view->_configure({_display_hv, -(int) config::border_width, -(int) config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2});
@@ -455,10 +482,10 @@ namespace wm {
                     _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
                 if (space->_isMapped(window)) {
                     XSetWindowBorderWidth(space->_display, window, config::border_width);
-                    _attribute.x = Space::_window_attributes.x;
-                    _attribute.y = Space::_window_attributes.y;
-                    _attribute.width = Space::_window_attributes.width + config::border_width * 2;
-                    _attribute.height = Space::_window_attributes.height + config::border_width * 2;
+                    _attribute.x = space->_window_attributes.x;
+                    _attribute.y = space->_window_attributes.y;
+                    _attribute.width = space->_window_attributes.width + config::border_width * 2;
+                    _attribute.height = space->_window_attributes.height + config::border_width * 2;
                     XSelectInput(space->_display, window, leaf_event_mask);
                 }
             }
@@ -468,14 +495,7 @@ namespace wm {
             }
 
             void Leaf::_refresh() {
-                if (_space->_isMapped(_window) && (
-                        Space::_window_attributes.x != _attribute.x ||
-                        Space::_window_attributes.y != _attribute.y ||
-                        Space::_window_attributes.width != _attribute.width - config::border_width * 2 ||
-                        Space::_window_attributes.height != _attribute.height - config::border_width * 2
-                )) {
-                    XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);
-                }
+                XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);
             }
 
             void Leaf::_raise() {
