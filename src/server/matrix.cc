@@ -152,7 +152,7 @@ namespace wm {
                                                 delete[] children;
                                                 return rtn;
                                             }();
-                                            
+
                                             if (low == _mask_layer && ancestor != _view) XLowerWindow(_display, leaf->_window);
                                             else if (low == leaf->_window && ancestor == _view) XRaiseWindow(_display, leaf->_window);
                                         }
