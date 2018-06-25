@@ -100,7 +100,7 @@ namespace wm {
                                         Node *rest;
                                         std::list<std::function<void()>> fl;
                                         if (leaf == _view || (leaf->_parent == _view && leaf->_parent->_children.size() <= 2)) {
-                                            leaf->_parent->_configure(_view->_attribute);
+                                            if (leaf->_parent) leaf->_parent->_configure(_view->_attribute);
                                             fl.emplace_back([&]() {
                                                 if (rest) rest->_raise();
                                                 _view = rest;
