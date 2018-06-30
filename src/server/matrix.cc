@@ -397,19 +397,21 @@ namespace wm {
         }
 
         void Space::viewResize(const FB &fb) {
-            auto new_view = (fb ? _view->_activeChild() : _view->_parent);
-            if (new_view) {
-                new_view->_configure(_view->_attribute);
-                XRaiseWindow(_display, _mask_layer);
-                new_view->_refresh();
-                new_view->_raise();
-                _view = new_view;
-                _pointer_coordinate.record();
+            if (_view) {
+                auto new_view = (fb ? _view->_activeChild() : _view->_parent);
+                if (new_view) {
+                    new_view->_configure(_view->_attribute);
+                    XRaiseWindow(_display, _mask_layer);
+                    new_view->_refresh();
+                    new_view->_raise();
+                    _view = new_view;
+                    _pointer_coordinate.record();
+                }
             }
         }
 
         void Space::viewMove(const FB &fb) {
-            if (_view->_parent) {
+            if (_view && _view->_parent) {
                 auto i = std::next(_view->_parent_iter, fb ? 1 : -1);
                 if (i == _view->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
                 auto new_view = *i;
@@ -442,10 +444,12 @@ namespace wm {
         }
 
         void Space::transpose() {
-            auto attribute = _view->_attribute;
-            attribute.hv = _display_hv = HV(!_display_hv);
-            _view->_configure(attribute);
-            _view->_refresh();
+            if (_view) {
+                auto attribute = _view->_attribute;
+                attribute.hv = _display_hv = HV(!_display_hv);
+                _view->_configure(attribute);
+                _view->_refresh();
+            }
         }
 
         void Space::closeActive(const bool &force) {
