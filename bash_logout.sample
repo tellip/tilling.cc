@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+echo $(xbacklight) > $HOME/.cache/XBACKLIGHT

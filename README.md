@@ -23,6 +23,8 @@ cd [path_to_repo]
 ln -s [path_to_repo]/cmake-build/matwm [path_to_binary]
 ln -s [path_to_repo]/cmake-build/matc [path_to_binary]
 nano ~/.xinitrc # add "exec matwm"
-nano [path_to_config]/sxhkdrc # refer to sxhkdrc.sample
+nano ~/.config/sxhkdrc # refer to sxhkdrc.sample
+nano ~/.config/matwm/bashrc # refer to bashrc.sample
+nano ~/.config/matwm/bash_logout # refer to bash_logout.sample
 startx
 ```
