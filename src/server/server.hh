@@ -75,14 +75,13 @@ namespace wm {
                             XSelectInput(display, XDefaultRootWindow(display), root_event_mask);
                             auto thread_x = std::thread([&]() {
                                 while (looping) {
+                                    XNextEvent(display, &event);
                                     while (command_tasks.size()) {
                                         command_tasks.front()();
                                         command_tasks.pop();
                                     }
-                                    if (XCheckMaskEvent(display, root_event_mask | leaf_event_mask, &event)) {
-                                        auto i = event_handlers.find(event.type);
-                                        if (i != event_handlers.end()) i->second(event);
-                                    }
+                                    auto i = event_handlers.find(event.type);
+                                    if (i != event_handlers.end()) i->second(event);
                                 }
                             });
 
