@@ -6,13 +6,12 @@
 #include <functional>
 #include <iostream>
 #include <list>
-#include <queue>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
 #include <X11/Xlib.h>
 
-#include "../public.hh"
+#include "../helpers.hh"
 
 namespace wm {
     namespace matrix {
