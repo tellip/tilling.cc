@@ -15,8 +15,8 @@ namespace wm {
         >;
 
         auto server = [&](const auto &callback) {
-            sockaddr_in sai_server, sai_event;
-            auto sock_server = createSocket(socket_port, sai_server), sock_event = createSocket(event_socket_port, sai_event);
+            sockaddr_in sai_command, sai_event;
+            auto sock_command = createSocket(command_port, sai_command), sock_event = createSocket(event_helper_port, sai_event);
 
             const auto display = XOpenDisplay(nullptr);
             if (display == nullptr) error("XOpenDisplay");
@@ -35,7 +35,7 @@ namespace wm {
                     [&]() {
                         if (looping) {
                             looping = false;
-                            sendSocket(socket_port, "");
+                            sendSocket(command_port, "");
                         }
                     },
                     //loop
@@ -48,11 +48,11 @@ namespace wm {
                             auto thread_sock = std::thread([&]() {
                                 while (looping) {
                                     char buffer[256];
-                                    acceptSocket(sock_server, buffer, 256);
+                                    acceptSocket(sock_command, buffer, 256);
 
                                     if (!strcmp(buffer, "#event")) {
                                         event_handler(event);
-                                        sendSocket(event_socket_port, "#done");
+                                        sendSocket(event_helper_port, "#done");
                                     } else {
                                         auto i = command_handlers.find(buffer);
                                         if (i != command_handlers.end()) i->second();
@@ -63,12 +63,11 @@ namespace wm {
                             XSelectInput(display, XDefaultRootWindow(display), root_event_mask);
                             auto thread_x = std::thread([&]() {
                                 while (looping) {
-
                                     XNextEvent(display, &event);
                                     auto i = event_handlers.find(event.type);
                                     if (i != event_handlers.end()) {
                                         event_handler = i->second;
-                                        sendSocket(socket_port, "#event");
+                                        sendSocket(command_port, "#event");
                                         char buffer[256];
                                         acceptSocket(sock_event, buffer, 256);
                                     }
@@ -86,7 +85,7 @@ namespace wm {
                     },
                     //clean
                     [&]() {
-                        close(sock_server);
+                        close(sock_command);
                         close(sock_event);
                         XCloseDisplay(display);
                     }
