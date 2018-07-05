@@ -9,14 +9,15 @@ namespace wm {
                 int,
                 EventHandler
         >;
+        using CommandHandler=std::function<void()>;
         using CommandHandlers=std::unordered_map<
                 std::string,
-                std::function<void()>
+                CommandHandler
         >;
 
         auto server = [&](const auto &callback) {
-            sockaddr_in sai_command, sai_event;
-            auto sock_command = createSocket(command_port, sai_command), sock_event = createSocket(event_helper_port, sai_event);
+            sockaddr_in sai_command/*, sai_command_helper, sai_event_helper*/;
+            auto sock_command = createSocket(command_port, sai_command)/*, sock_command_helper = createSocket(command_helper_port, sai_command_helper), sock_event_helper = createSocket(event_helper_port, sai_event_helper)*/;
 
             const auto display = XOpenDisplay(nullptr);
             if (display == nullptr) error("XOpenDisplay");
@@ -41,7 +42,8 @@ namespace wm {
                     //loop
                     [&](const CommandHandlers &command_handlers, const long &root_event_mask, const long &leaf_event_mask, const EventHandlers &event_handlers, const auto &callback) {
                         XEvent event;
-                        EventHandler event_handler;
+                        std::queue<CommandHandler> command_tasks;
+                        /*bool handling_command = false, command_waiting = false, handling_event = false, event_waiting = false;*/
                         if (!looping) {
                             looping = true;
 
@@ -49,27 +51,22 @@ namespace wm {
                                 while (looping) {
                                     char buffer[256];
                                     acceptSocket(sock_command, buffer, 256);
-
-                                    if (!strcmp(buffer, "#event")) {
-                                        event_handler(event);
-                                        sendSocket(event_helper_port, "#done");
-                                    } else {
-                                        auto i = command_handlers.find(buffer);
-                                        if (i != command_handlers.end()) i->second();
-                                    }
+                                    auto i = command_handlers.find(buffer);
+                                    if (i != command_handlers.end()) command_tasks.push(i->second);
                                 }
                             });
 
                             XSelectInput(display, XDefaultRootWindow(display), root_event_mask);
                             auto thread_x = std::thread([&]() {
                                 while (looping) {
-                                    XNextEvent(display, &event);
-                                    auto i = event_handlers.find(event.type);
-                                    if (i != event_handlers.end()) {
-                                        event_handler = i->second;
-                                        sendSocket(command_port, "#event");
-                                        char buffer[256];
-                                        acceptSocket(sock_event, buffer, 256);
+                                    while (XPending(display) > 0) {
+                                        XNextEvent(display, &event);
+                                        auto i = event_handlers.find(event.type);
+                                        if (i != event_handlers.end()) i->second(event);
+                                    }
+                                    while (!command_tasks.empty()) {
+                                        command_tasks.front()();
+                                        command_tasks.pop();
                                     }
                                 }
                             });
@@ -86,7 +83,8 @@ namespace wm {
                     //clean
                     [&]() {
                         close(sock_command);
-                        close(sock_event);
+                        /*close(sock_command_helper);
+                        close(sock_event_helper);*/
                         XCloseDisplay(display);
                     }
             );

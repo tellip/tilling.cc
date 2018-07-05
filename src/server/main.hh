@@ -6,6 +6,7 @@
 #include <functional>
 #include <iostream>
 #include <list>
+#include <queue>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>

@@ -14,9 +14,9 @@ namespace wm {
         sprintf(fmt, ":%%%d%c", (int) sizeof(in_port_t) * 8, std::is_signed<in_port_t>::value ? 'd' : 'u');
         in_port_t i;
         if (!sscanf(s, fmt, &i)) error("environment variable \"DISPLAY\"");
-        return config::socket_port_base + (in_port_t) (2 * i);
+        return config::socket_port_base + (in_port_t) (3 * i);
     }();
-    const in_port_t event_helper_port = command_port + (in_port_t) 1;
+    /*const in_port_t command_helper_port = command_port + (in_port_t) 1, event_helper_port = command_port + (in_port_t) 2;*/
 
     const auto sendSocket = [&](const in_port_t &port, const std::string &msg) {
         auto sock_server = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
