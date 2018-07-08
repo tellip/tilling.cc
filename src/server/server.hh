@@ -59,11 +59,11 @@ namespace wm {
                             XSelectInput(display, XDefaultRootWindow(display), root_event_mask);
                             auto thread_x = std::thread([&]() {
                                 while (looping) {
-                                    while (XPending(display) > 0) {
+                                    do {
                                         XNextEvent(display, &event);
                                         auto i = event_handlers.find(event.type);
                                         if (i != event_handlers.end()) i->second(event);
-                                    }
+                                    } while (XPending(display) > 0);
                                     while (!command_tasks.empty()) {
                                         command_tasks.front()();
                                         command_tasks.pop();

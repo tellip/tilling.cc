@@ -14,7 +14,7 @@ namespace wm {
         sprintf(fmt, ":%%%d%c", (int) sizeof(in_port_t) * 8, std::is_signed<in_port_t>::value ? 'd' : 'u');
         in_port_t i;
         if (!sscanf(s, fmt, &i)) error("environment variable \"DISPLAY\"");
-        return config::socket_port_base + (in_port_t) (3 * i);
+        return config::socket_port_base + i /*(in_port_t) (3 * i)*/;
     }();
     /*const in_port_t command_helper_port = command_port + (in_port_t) 1, event_helper_port = command_port + (in_port_t) 2;*/
 
