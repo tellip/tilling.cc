@@ -5,7 +5,7 @@
 namespace wm {
     namespace matrix {
         class PointerCoordinate {
-            Display *const _display;
+            xcb_connection_t *const _x_connection;
 
             int _x, _y;
 
@@ -13,7 +13,7 @@ namespace wm {
             int _root_x, _root_y, _win_x, _win_y;
             unsigned int _mask;
         public:
-            explicit PointerCoordinate(Display *const &);
+            explicit PointerCoordinate(xcb_connection_t *const &);
 
             void refresh();
 
@@ -25,16 +25,16 @@ namespace wm {
         class Space {
             static bool _has_error;
 
-            static int _handleError(Display *, XErrorEvent *);
+            static int _handleError(xcb_connection_t *, XErrorEvent *);
 
             const std::function<void()> _breakLoop;
-            Display *const _display;
+            xcb_connection_t *const _x_connection;
             const unsigned long _normal_pixel, _focus_pixel;
             const Atom _xia_protocols, _xia_delete_window;
             const Window _mask_layer;
 
-            unsigned int _display_width, _display_height;
-            HV _display_hv;
+            unsigned int _x_connection_width, _x_connection_height;
+            HV _x_connection_hv;
 
             Node *_root, *_view;
             node::Leaf *_active;
@@ -46,7 +46,7 @@ namespace wm {
         public:
             const server::EventHandlers event_handlers;
 
-            Space(Display *const &, const std::function<void()> &);
+            Space(xcb_connection_t *const &, const std::function<void()> &);
 
             ~Space();
 
@@ -180,8 +180,8 @@ namespace wm {
         const long root_event_mask = SubstructureNotifyMask;
         const long leaf_event_mask = FocusChangeMask | EnterWindowMask;
 
-        auto matrix = [&](Display *const &display, const auto &breakLoop, const auto &callback) {
-            auto space = Space(display, breakLoop);
+        auto matrix = [&](xcb_connection_t *const &x_connection, const auto &breakLoop, const auto &callback) {
+            auto space = Space(x_connection, breakLoop);
             space.refresh();
             server::CommandHandlers command_handlers = {
                     {"exit",           [&]() {

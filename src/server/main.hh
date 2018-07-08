@@ -10,7 +10,7 @@
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
-#include <X11/Xlib.h>
+#include <xcb/xcb.h>
 
 #include "../helpers.hh"
 

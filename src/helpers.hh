@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.hh"
+#include <xcb/xcb.h>
 
 namespace wm {
     const auto error = [&](const char *const &fn) {

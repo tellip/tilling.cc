@@ -3,12 +3,12 @@
 
 namespace wm {
     namespace matrix {
-        PointerCoordinate::PointerCoordinate(Display *const &display) : _display(display) {
+        PointerCoordinate::PointerCoordinate(xcb_connection_t *const &x_connection) : _x_connection(x_connection) {
             _x = _y = -1;
         }
 
         void PointerCoordinate::refresh() {
-            XQueryPointer(_display, XDefaultRootWindow(_display), &_root, &_child, &_root_x, &_root_y, &_win_x, &_win_y, &_mask);
+            XQueryPointer(_x_connection, XDefaultRootWindow(_x_connection), &_root, &_child, &_root_x, &_root_y, &_win_x, &_win_y, &_mask);
         }
 
         void PointerCoordinate::record() {
@@ -27,19 +27,19 @@ namespace wm {
 
         bool Space::_has_error;
 
-        int Space::_handleError(Display *, XErrorEvent *) {
+        int Space::_handleError(xcb_connection_t *, XErrorEvent *) {
             _has_error = true;
             return 0;
         }
 
-        Space::Space(Display *const &display, const std::function<void()> &break_) :
+        Space::Space(xcb_connection_t *const &x_connection, const std::function<void()> &break_) :
                 _breakLoop(break_),
-                _display(display),
+                _x_connection(x_connection),
                 _normal_pixel(_colorPixel(config::normal_color)),
                 _focus_pixel(_colorPixel(config::focus_color)),
-                _xia_protocols(XInternAtom(display, "WM_PROTOCOLS", False)),
-                _xia_delete_window(XInternAtom(display, "WM_DELETE_WINDOW", False)),
-                _mask_layer(XCreateSimpleWindow(_display, XDefaultRootWindow(_display), 0, 0, 1, 1, 0, _normal_pixel, _normal_pixel)),
+                _xia_protocols(XInternAtom(x_connection, "WM_PROTOCOLS", False)),
+                _xia_delete_window(XInternAtom(x_connection, "WM_DELETE_WINDOW", False)),
+                _mask_layer(XCreateSimpleWindow(_x_connection, XDefaultRootWindow(_x_connection), 0, 0, 1, 1, 0, _normal_pixel, _normal_pixel)),
                 event_handlers(
                         {
                                 {MapNotify,       [&](const XEvent &event) {
@@ -53,7 +53,7 @@ namespace wm {
                                                 fl.emplace_back([&]() {
                                                     _root = _view = leaf;
                                                 });
-                                                leaf->_configure({_display_hv, -(int) config::border_width, -(int) config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2});
+                                                leaf->_configure({_x_connection_hv, -(int) config::border_width, -(int) config::border_width, _x_connection_width + config::border_width * 2, _x_connection_height + config::border_width * 2});
                                                 leaf->_refresh();
                                             } else {
                                                 if (_active == _view) {
@@ -142,7 +142,7 @@ namespace wm {
                                             auto low = [&]() {
                                                 Window rtn = 0, root, parent, *children;
                                                 unsigned int children_size;
-                                                XQueryTree(_display, XDefaultRootWindow(_display), &root, &parent, &children, &children_size);
+                                                XQueryTree(_x_connection, XDefaultRootWindow(_x_connection), &root, &parent, &children, &children_size);
                                                 for (auto j = 0; j < children_size; ({
                                                     auto child = children[j++];
                                                     if (child == leaf->_window || child == _mask_layer) {
@@ -154,8 +154,8 @@ namespace wm {
                                                 return rtn;
                                             }();
 
-                                            if (low == _mask_layer && ancestor != _view) XLowerWindow(_display, leaf->_window);
-                                            else if (low == leaf->_window && ancestor == _view) XRaiseWindow(_display, leaf->_window);
+                                            if (low == _mask_layer && ancestor != _view) XLowerWindow(_x_connection, leaf->_window);
+                                            else if (low == leaf->_window && ancestor == _view) XRaiseWindow(_x_connection, leaf->_window);
                                         }
                                     }
                                 }},
@@ -163,7 +163,7 @@ namespace wm {
                                     auto i = _leaves.find(event.xfocus.window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (leaf != _active && _active && _isMapped(_active->_window)) XSetInputFocus(_display, _active->_window, RevertToParent, CurrentTime);
+                                        if (leaf != _active && _active && _isMapped(_active->_window)) XSetInputFocus(_x_connection, _active->_window, RevertToParent, CurrentTime);
                                     }
                                 }},
                                 {EnterNotify,     [&](const XEvent &event) {
@@ -184,10 +184,10 @@ namespace wm {
                                 }}
                         }
                 ),
-                _pointer_coordinate(display) {
+                _pointer_coordinate(x_connection) {
             XSetErrorHandler(&_handleError);
             if (_xia_protocols == None || _xia_delete_window == None) error("XInternAtom");
-            XMapWindow(_display, _mask_layer);
+            XMapWindow(_x_connection, _mask_layer);
             _root = _view = _active = nullptr;
             _exiting = false;
             refresh();
@@ -199,15 +199,15 @@ namespace wm {
         }
 
         unsigned long Space::_colorPixel(const char *const &cc) {
-            auto cm = DefaultColormap(_display, XDefaultScreen(_display));
+            auto cm = DefaultColormap(_x_connection, XDefaultScreen(_x_connection));
             XColor x_color;
-            if (XAllocNamedColor(_display, cm, cc, &x_color, &x_color) == 0) error("XAllocNamedColor");
+            if (XAllocNamedColor(_x_connection, cm, cc, &x_color, &x_color) == 0) error("XAllocNamedColor");
             return x_color.pixel;
         }
 
         int Space::_isMapped(const Window &window) {
             _has_error = false;
-            XGetWindowAttributes(_display, window, &_window_attributes);
+            XGetWindowAttributes(_x_connection, window, &_window_attributes);
             return !_has_error && _window_attributes.map_state;
         }
 
@@ -263,16 +263,16 @@ namespace wm {
         void Space::refresh() {
             static bool called = false;
 
-            _display_width = (unsigned int) XDisplayWidth(_display, DefaultScreen(_display));
-            _display_height = (unsigned int) XDisplayHeight(_display, DefaultScreen(_display));
+            _x_connection_width = (unsigned int) XDisplayWidth(_x_connection, DefaultScreen(_x_connection));
+            _x_connection_height = (unsigned int) XDisplayHeight(_x_connection, DefaultScreen(_x_connection));
             if (!called) {
                 called = true;
-                _display_hv = (HV) (_display_width >= _display_height);
+                _x_connection_hv = (HV) (_x_connection_width >= _x_connection_height);
             }
-            XResizeWindow(_display, _mask_layer, _display_width, _display_height);
-            XRaiseWindow(_display, _mask_layer);
+            XResizeWindow(_x_connection, _mask_layer, _x_connection_width, _x_connection_height);
+            XRaiseWindow(_x_connection, _mask_layer);
             if (_view) {
-                _view->_configure({_display_hv, -(int) config::border_width, -(int) config::border_width, _display_width + config::border_width * 2, _display_height + config::border_width * 2});
+                _view->_configure({_x_connection_hv, -(int) config::border_width, -(int) config::border_width, _x_connection_width + config::border_width * 2, _x_connection_height + config::border_width * 2});
                 _view->_refresh();
                 _view->_raise();
             }
@@ -401,7 +401,7 @@ namespace wm {
                 auto new_view = (fb ? _view->_activeChild() : _view->_parent);
                 if (new_view) {
                     new_view->_configure(_view->_attribute);
-                    XRaiseWindow(_display, _mask_layer);
+                    XRaiseWindow(_x_connection, _mask_layer);
                     new_view->_refresh();
                     new_view->_raise();
                     _view = new_view;
@@ -417,7 +417,7 @@ namespace wm {
                 auto new_view = *i;
 
                 new_view->_configure(_view->_attribute);
-                XRaiseWindow(_display, _mask_layer);
+                XRaiseWindow(_x_connection, _mask_layer);
                 new_view->_refresh();
                 new_view->_raise();
                 _activate(new_view);
@@ -435,7 +435,7 @@ namespace wm {
             auto new_view = (fb ? _active : _root);
             if (new_view) {
                 new_view->_configure(_view->_attribute);
-                XRaiseWindow(_display, _mask_layer);
+                XRaiseWindow(_x_connection, _mask_layer);
                 new_view->_refresh();
                 new_view->_raise();
                 _view = new_view;
@@ -446,7 +446,7 @@ namespace wm {
         void Space::transpose() {
             if (_view) {
                 auto attribute = _view->_attribute;
-                attribute.hv = _display_hv = HV(!_display_hv);
+                attribute.hv = _x_connection_hv = HV(!_x_connection_hv);
                 _view->_configure(attribute);
                 _view->_refresh();
             }
@@ -455,7 +455,7 @@ namespace wm {
         void Space::closeActive(const bool &force) {
             if (_active) {
                 if (_isMapped(_active->_window)) {
-                    if (force) XDestroyWindow(_display, _active->_window);
+                    if (force) XDestroyWindow(_x_connection, _active->_window);
                     else {
                         XEvent event;
                         event.type = ClientMessage;
@@ -464,7 +464,7 @@ namespace wm {
                         event.xclient.format = 32;
                         event.xclient.data.l[0] = _xia_delete_window;
                         event.xclient.data.l[1] = CurrentTime;
-                        XSendEvent(_display, _active->_window, False, NoEventMask, &event);
+                        XSendEvent(_x_connection, _active->_window, False, NoEventMask, &event);
                     }
                 }
             } else if (_exiting) _breakLoop();
@@ -486,12 +486,12 @@ namespace wm {
                     _window(window),
                     _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
                 if (space->_isMapped(window)) {
-                    XSetWindowBorderWidth(space->_display, window, config::border_width);
+                    XSetWindowBorderWidth(space->_x_connection, window, config::border_width);
                     _attribute.x = space->_window_attributes.x;
                     _attribute.y = space->_window_attributes.y;
                     _attribute.width = space->_window_attributes.width + config::border_width * 2;
                     _attribute.height = space->_window_attributes.height + config::border_width * 2;
-                    XSelectInput(space->_display, window, leaf_event_mask);
+                    XSelectInput(space->_x_connection, window, leaf_event_mask);
                 }
             }
 
@@ -500,11 +500,11 @@ namespace wm {
             }
 
             void Leaf::_refresh() {
-                XMoveResizeWindow(_space->_display, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);
+                XMoveResizeWindow(_space->_x_connection, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);
             }
 
             void Leaf::_raise() {
-                XRaiseWindow(_space->_display, _window);
+                XRaiseWindow(_space->_x_connection, _window);
             }
 
             Leaf *Leaf::_activeLeaf(const FB &) {
@@ -533,9 +533,9 @@ namespace wm {
             void Leaf::_focus(const bool &yes) {
                 if (_space->_isMapped(_window)) {
                     if (yes) {
-                        XSetWindowBorder(_space->_display, _window, _space->_focus_pixel);
-                        XSetInputFocus(_space->_display, _window, RevertToParent, CurrentTime);
-                    } else XSetWindowBorder(_space->_display, _window, _space->_normal_pixel);
+                        XSetWindowBorder(_space->_x_connection, _window, _space->_focus_pixel);
+                        XSetInputFocus(_space->_x_connection, _window, RevertToParent, CurrentTime);
+                    } else XSetWindowBorder(_space->_x_connection, _window, _space->_normal_pixel);
                 }
             }
 
