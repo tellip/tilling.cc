@@ -60,11 +60,14 @@ namespace wm {
                                     char buffer[256];
                                     acceptSocket(sock_command, buffer, 256);
                                     auto i = command_handlers.find(buffer);
-                                    if (i != command_handlers.end()) command_tasks.push(i->second);
-                                    auto event = new xcb_generic_event_t();
-                                    xcb_send_event(x_connection, 0, x_default_screen->root, XCB_EVENT_MASK_NO_EVENT, (const char *) event);
-                                    xcb_flush(x_connection);
-                                    delete event;
+                                    if (i != command_handlers.end()) {
+                                        command_tasks.push(i->second);
+                                        
+                                        auto event = new xcb_generic_event_t();
+                                        xcb_send_event(x_connection, 0, x_default_screen->root, XCB_EVENT_MASK_NO_EVENT, (const char *) event);
+                                        xcb_flush(x_connection);
+                                        delete event;
+                                    }
                                 }
                             });
 
