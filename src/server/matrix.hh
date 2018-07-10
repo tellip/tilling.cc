@@ -182,11 +182,11 @@ namespace wm {
             auto space = Space(x_connection, x_default_screen, breakLoop);
             space.refresh();
             server::CommandHandlers command_handlers = {
-                    {"exit",         [&]() {
+                    {"exit",           [&]() {
                         space.exit();
                     }},
 
-                    {"refresh", [&]() {
+                    {"refresh",        [&]() {
                         space.refresh();
                     }},
 
@@ -247,17 +247,17 @@ namespace wm {
                     {"view-backward",  [&]() {
                         space.viewMove(FB::BACKWARD);
                     }},
-//
-//                    {"transpose",      [&]() {
-//                        space.transpose();
-//                    }},
-//
-                    {"close-window", [&]() {
+
+                    {"transpose",      [&]() {
+                        space.transpose();
+                    }},
+
+                    {"close-window",   [&]() {
                         space.closeActive(false);
                     }},
-//                    {"kill-window",    [&]() {
-//                        space.closeActive(true);
-//                    }}
+                    {"kill-window",    [&]() {
+                        space.closeActive(true);
+                    }}
             };
             callback(
                     command_handlers,

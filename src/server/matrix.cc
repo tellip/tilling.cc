@@ -524,6 +524,7 @@ namespace wm {
                 attribute.hv = _root_hv = HV(!_root_hv);
                 _view->_configure(attribute);
                 _view->_refresh();
+                xcb_flush(_x_connection);
             }
         }
 
@@ -540,9 +541,9 @@ namespace wm {
                     client_message->data.data32[0] = _xia_delete_window;
                     client_message->data.data32[1] = XCB_CURRENT_TIME;
                     xcb_send_event(_x_connection, 0, _active->_window, XCB_EVENT_MASK_NO_EVENT, (const char *) client_message);
-                    xcb_flush(_x_connection);
                     delete client_message;
                 }
+                xcb_flush(_x_connection);
 //                }
             } else if (_exiting) _breakLoop();
         }
