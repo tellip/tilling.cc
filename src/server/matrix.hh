@@ -176,89 +176,90 @@ namespace wm {
             };
         }
 
-        const uint32_t root_event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+        const uint32_t root_event_mask =  XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
         const uint32_t leaf_event_mask = XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_ENTER_WINDOW;
 
         auto matrix = [&](xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const auto &breakLoop, const auto &callback) {
             auto space = Space(x_connection, x_default_screen, breakLoop);
             space.refresh();
             server::CommandHandlers command_handlers = {
-                    {"exit",           [&]() {
-                        space.exit();
+                    {"exit", [&]() {
+                        breakLoop();
+//                        space.exit();
                     }},
 
-                    {"refresh",        [&]() {
-                        space.refresh();
-                    }},
-
-                    {"focus-up",       [&]() {
-                        space.focus(HV::VERTICAL, FB::BACKWARD);
-                    }},
-                    {"focus-right",    [&]() {
-                        space.focus(HV::HORIZONTAL, FB::FORWARD);
-                    }},
-                    {"focus-down",     [&]() {
-                        space.focus(HV::VERTICAL, FB::FORWARD);
-                    }},
-                    {"focus-left",     [&]() {
-                        space.focus(HV::HORIZONTAL, FB::BACKWARD);
-                    }},
-
-                    {"move-up",        [&]() {
-                        space.move(HV::VERTICAL, FB::BACKWARD);
-                    }},
-                    {"move-right",     [&]() {
-                        space.move(HV::HORIZONTAL, FB::FORWARD);
-                    }},
-                    {"move-down",      [&]() {
-                        space.move(HV::VERTICAL, FB::FORWARD);
-                    }},
-                    {"move-left",      [&]() {
-                        space.move(HV::HORIZONTAL, FB::BACKWARD);
-                    }},
-
-                    {"reparent-up",    [&]() {
-                        space.reparent(HV::VERTICAL, FB::BACKWARD);
-                    }},
-                    {"reparent-right", [&]() {
-                        space.reparent(HV::HORIZONTAL, FB::FORWARD);
-                    }},
-                    {"reparent-down",  [&]() {
-                        space.reparent(HV::VERTICAL, FB::FORWARD);
-                    }},
-                    {"reparent-left",  [&]() {
-                        space.reparent(HV::HORIZONTAL, FB::BACKWARD);
-                    }},
-
-                    {"view-in",        [&]() {
-                        space.viewResize(FB::FORWARD);
-                    }},
-                    {"view-out",       [&]() {
-                        space.viewResize(FB::BACKWARD);
-                    }},
-                    {"view-leaf",      [&]() {
-                        space.viewExtreme(FB::FORWARD);
-                    }},
-                    {"view-root",      [&]() {
-                        space.viewExtreme(FB::BACKWARD);
-                    }},
-                    {"view-forward",   [&]() {
-                        space.viewMove(FB::FORWARD);
-                    }},
-                    {"view-backward",  [&]() {
-                        space.viewMove(FB::BACKWARD);
-                    }},
-
-                    {"transpose",      [&]() {
-                        space.transpose();
-                    }},
-
-                    {"close-window",   [&]() {
-                        space.closeActive(false);
-                    }},
-                    {"kill-window",    [&]() {
-                        space.closeActive(true);
-                    }}
+//                    {"refresh",        [&]() {
+//                        space.refresh();
+//                    }},
+//
+//                    {"focus-up",       [&]() {
+//                        space.focus(HV::VERTICAL, FB::BACKWARD);
+//                    }},
+//                    {"focus-right",    [&]() {
+//                        space.focus(HV::HORIZONTAL, FB::FORWARD);
+//                    }},
+//                    {"focus-down",     [&]() {
+//                        space.focus(HV::VERTICAL, FB::FORWARD);
+//                    }},
+//                    {"focus-left",     [&]() {
+//                        space.focus(HV::HORIZONTAL, FB::BACKWARD);
+//                    }},
+//
+//                    {"move-up",        [&]() {
+//                        space.move(HV::VERTICAL, FB::BACKWARD);
+//                    }},
+//                    {"move-right",     [&]() {
+//                        space.move(HV::HORIZONTAL, FB::FORWARD);
+//                    }},
+//                    {"move-down",      [&]() {
+//                        space.move(HV::VERTICAL, FB::FORWARD);
+//                    }},
+//                    {"move-left",      [&]() {
+//                        space.move(HV::HORIZONTAL, FB::BACKWARD);
+//                    }},
+//
+//                    {"reparent-up",    [&]() {
+//                        space.reparent(HV::VERTICAL, FB::BACKWARD);
+//                    }},
+//                    {"reparent-right", [&]() {
+//                        space.reparent(HV::HORIZONTAL, FB::FORWARD);
+//                    }},
+//                    {"reparent-down",  [&]() {
+//                        space.reparent(HV::VERTICAL, FB::FORWARD);
+//                    }},
+//                    {"reparent-left",  [&]() {
+//                        space.reparent(HV::HORIZONTAL, FB::BACKWARD);
+//                    }},
+//
+//                    {"view-in",        [&]() {
+//                        space.viewResize(FB::FORWARD);
+//                    }},
+//                    {"view-out",       [&]() {
+//                        space.viewResize(FB::BACKWARD);
+//                    }},
+//                    {"view-leaf",      [&]() {
+//                        space.viewExtreme(FB::FORWARD);
+//                    }},
+//                    {"view-root",      [&]() {
+//                        space.viewExtreme(FB::BACKWARD);
+//                    }},
+//                    {"view-forward",   [&]() {
+//                        space.viewMove(FB::FORWARD);
+//                    }},
+//                    {"view-backward",  [&]() {
+//                        space.viewMove(FB::BACKWARD);
+//                    }},
+//
+//                    {"transpose",      [&]() {
+//                        space.transpose();
+//                    }},
+//
+//                    {"close-window",   [&]() {
+//                        space.closeActive(false);
+//                    }},
+//                    {"kill-window",    [&]() {
+//                        space.closeActive(true);
+//                    }}
             };
             callback(
                     command_handlers,

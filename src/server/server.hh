@@ -61,6 +61,10 @@ namespace wm {
                                     acceptSocket(sock_command, buffer, 256);
                                     auto i = command_handlers.find(buffer);
                                     if (i != command_handlers.end()) command_tasks.push(i->second);
+                                    auto event = new xcb_generic_event_t();
+                                    xcb_send_event(x_connection, 0, x_default_screen->root, XCB_EVENT_MASK_NO_EVENT, (const char *) event);
+                                    xcb_flush(x_connection);
+                                    delete event;
                                 }
                             });
 
@@ -76,10 +80,8 @@ namespace wm {
                                     do {
                                         if (event) {
                                             auto type = event->response_type & ~0x80;
-                                            if (type) {
-                                                auto i = event_handlers.find(type);
-                                                if (i != event_handlers.end()) i->second(event);
-                                            }
+                                            auto i = event_handlers.find(type);
+                                            if (i != event_handlers.end()) i->second(event);
                                             free(event);
                                         }
                                     } while ((event = xcb_poll_for_event(x_connection)));
