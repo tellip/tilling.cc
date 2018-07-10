@@ -22,38 +22,25 @@ namespace wm {
 
             xcb_connection_t *x_connection;
             xcb_screen_t *x_default_screen;
-            xcb_window_t x_default_root_window;
             {
-                auto screen_of_display = [&](xcb_connection_t *c, int screen) -> xcb_screen_t * {
-                    xcb_screen_iterator_t iter;
-
-                    iter = xcb_setup_roots_iterator(xcb_get_setup(c));
-                    for (; iter.rem; --screen, xcb_screen_next(&iter))
-                        if (screen == 0)
-                            return iter.data;
-
-                    return nullptr;
-                };
                 int screen_default_nbr;
-                x_connection = xcb_connect("Matrix Window Manager", &screen_default_nbr);
+                x_connection = xcb_connect(nullptr, &screen_default_nbr);
                 if (xcb_connection_has_error(x_connection)) error("xcb_connect");
                 x_default_screen = screen_of_display(x_connection, screen_default_nbr);
-                if (x_default_screen) x_default_root_window = x_default_screen->root;
-                else error("screen_of_display");
+                if (!x_default_screen->root) error("screen_of_display");
             }
 
-            ({
-                auto cookie = xcb_query_tree(x_connection, x_default_root_window);
-                xcb_generic_error_t *err = nullptr;
-                auto replay = xcb_query_tree_reply(x_connection, cookie, &err);
-                if (err) error("xcb_query_tree_reply");
-                auto length = xcb_query_tree_children_length(replay);
-                if (length) error("child windows already existing");
-            });
+            if (xcb_query_tree_reply(
+                    x_connection,
+                    xcb_query_tree(x_connection, x_default_screen->root),
+                    nullptr
+            )->length)
+                error("child windows already existing");
 
             bool looping = false;
             callback(
                     x_connection,
+                    x_default_screen,
                     //break
                     [&]() {
                         if (looping) {
@@ -62,7 +49,7 @@ namespace wm {
                         }
                     },
                     //loop
-                    [&](const CommandHandlers &command_handlers, const long &root_event_mask, const long &leaf_event_mask, const EventHandlers &event_handlers, const auto &callback) {
+                    [&](const CommandHandlers &command_handlers, const uint32_t &root_event_mask, const uint32_t &leaf_event_mask, const EventHandlers &event_handlers, const auto &callback) {
                         std::queue<CommandHandler> command_tasks;
                         /*bool handling_command = false, command_waiting = false, handling_event = false, event_waiting = false;*/
                         if (!looping) {
@@ -77,8 +64,10 @@ namespace wm {
                                 }
                             });
 
-                            uint32_t mask[1] = {root_event_mask | leaf_event_mask};
-                            xcb_change_window_attributes(x_connection, x_default_root_window, XCB_CW_EVENT_MASK, mask);
+                            xcb_change_window_attributes(x_connection, x_default_screen->root, XCB_CW_EVENT_MASK, ({
+                                uint32_t values[] = {root_event_mask};
+                                values;
+                            }));
                             xcb_flush(x_connection);
 
                             auto thread_x = std::thread([&]() {

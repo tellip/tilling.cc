@@ -4,58 +4,57 @@
 
 namespace wm {
     namespace matrix {
-        class PointerCoordinate {
-            xcb_connection_t *const _x_connection;
-
-            int _x, _y;
-
-            Window _root, _child;
-            int _root_x, _root_y, _win_x, _win_y;
-            unsigned int _mask;
-        public:
-            explicit PointerCoordinate(xcb_connection_t *const &);
-
-            void refresh();
-
-            void record();
-
-            bool check();
-        };
+//        class PointerCoordinate {
+//            xcb_connection_t *const _x_connection;
+//
+//            int _x, _y;
+//
+//            Window _root, _child;
+//            int _root_x, _root_y, _win_x, _win_y;
+//            unsigned int _mask;
+//        public:
+//            explicit PointerCoordinate(xcb_connection_t *const &);
+//
+//            void refresh();
+//
+//            void record();
+//
+//            bool check();
+//        };
 
         class Space {
-            static bool _has_error;
-
-            static int _handleError(xcb_connection_t *, XErrorEvent *);
-
             const std::function<void()> _breakLoop;
             xcb_connection_t *const _x_connection;
-            const unsigned long _normal_pixel, _focus_pixel;
-            const Atom _xia_protocols, _xia_delete_window;
-            const Window _mask_layer;
+            xcb_screen_t *const _x_default_screen;
+            const xcb_atom_t _xia_protocols, _xia_delete_window;
+            const uint32_t _normal_pixel, _focus_pixel;
+            const xcb_window_t _mask_layer;
 
-            unsigned int _x_connection_width, _x_connection_height;
-            HV _x_connection_hv;
+            uint16_t _root_width, _root_height;
+            HV _root_hv;
 
             Node *_root, *_view;
             node::Leaf *_active;
-            std::unordered_map<Window, node::Leaf *> _leaves;
+            std::unordered_map<xcb_window_t, node::Leaf *> _leaves;
 
-            PointerCoordinate _pointer_coordinate;
+//            PointerCoordinate _pointer_coordinate;
 
             bool _exiting;
         public:
             const server::EventHandlers event_handlers;
 
-            Space(xcb_connection_t *const &, const std::function<void()> &);
+            Space(xcb_connection_t *const &, xcb_screen_t *const &, const std::function<void()> &);
 
             ~Space();
 
         private:
-            unsigned long _colorPixel(const char *const &);
+            xcb_atom_t _internAtom(const char *const &);
 
-            XWindowAttributes _window_attributes;
+            uint32_t _colorPixel(const std::vector<uint16_t> &);
 
-            int _isMapped(const Window &);
+//            XWindowAttributes _window_attributes;
+
+//            int _isMapped(const Window &);
 
             node::Branch *_join(Node *const &, Node *const &, const FB &);
 
@@ -93,8 +92,8 @@ namespace wm {
 
         struct Attribute {
             HV hv;
-            int x, y;
-            unsigned int width, height;
+            int16_t x, y;
+            uint16_t width, height;
         };
 
         class Node {
@@ -128,10 +127,10 @@ namespace wm {
 
         namespace node {
             class Leaf : public Node {
-                const Window _window;
-                const std::unordered_map<Window, Leaf *>::iterator _leaves_iter;
+                const xcb_window_t _window;
+                const std::unordered_map<xcb_window_t, Leaf *>::iterator _leaves_iter;
 
-                Leaf(Space *const &, const Window &);
+                Leaf(Space *const &, const xcb_window_t &);
 
                 ~Leaf() final;
 
@@ -156,7 +155,7 @@ namespace wm {
 
                 explicit Branch(Space *const &);
 
-                ~Branch();
+                ~Branch() final;
 
                 void _configure(const Attribute &) final;
 
@@ -177,11 +176,11 @@ namespace wm {
             };
         }
 
-        const long root_event_mask = SubstructureNotifyMask;
-        const long leaf_event_mask = FocusChangeMask | EnterWindowMask;
+        const uint32_t root_event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+        const uint32_t leaf_event_mask = XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_ENTER_WINDOW;
 
-        auto matrix = [&](xcb_connection_t *const &x_connection, const auto &breakLoop, const auto &callback) {
-            auto space = Space(x_connection, breakLoop);
+        auto matrix = [&](xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const auto &breakLoop, const auto &callback) {
+            auto space = Space(x_connection, x_default_screen, breakLoop);
             space.refresh();
             server::CommandHandlers command_handlers = {
                     {"exit",           [&]() {

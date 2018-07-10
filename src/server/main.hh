@@ -7,9 +7,11 @@
 #include <iostream>
 #include <list>
 #include <queue>
+#include <stdint-gcc.h>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
+#include <vector>
 #include <xcb/xcb.h>
 
 #include "../helpers.hh"

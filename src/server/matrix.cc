@@ -3,57 +3,52 @@
 
 namespace wm {
     namespace matrix {
-        PointerCoordinate::PointerCoordinate(xcb_connection_t *const &x_connection) : _x_connection(x_connection) {
-            _x = _y = -1;
-        }
+//        PointerCoordinate::PointerCoordinate(xcb_connection_t *const &x_connection) : _x_connection(x_connection) {
+//            _x = _y = -1;
+//        }
+//
+//        void PointerCoordinate::refresh() {
+//            XQueryPointer(_x_connection, XDefaultRootWindow(_x_connection), &_root, &_child, &_root_x, &_root_y, &_win_x, &_win_y, &_mask);
+//        }
+//
+//        void PointerCoordinate::record() {
+//            refresh();
+//            _x = _root_x;
+//            _y = _root_y;
+//        }
+//
+//        bool PointerCoordinate::check() {
+//            refresh();
+//            return _x == _root_x && _y == _root_y && ({
+//                _x = _y = -1;
+//                true;
+//            });
+//        }
 
-        void PointerCoordinate::refresh() {
-            XQueryPointer(_x_connection, XDefaultRootWindow(_x_connection), &_root, &_child, &_root_x, &_root_y, &_win_x, &_win_y, &_mask);
-        }
-
-        void PointerCoordinate::record() {
-            refresh();
-            _x = _root_x;
-            _y = _root_y;
-        }
-
-        bool PointerCoordinate::check() {
-            refresh();
-            return _x == _root_x && _y == _root_y && ({
-                _x = _y = -1;
-                true;
-            });
-        }
-
-        bool Space::_has_error;
-
-        int Space::_handleError(xcb_connection_t *, XErrorEvent *) {
-            _has_error = true;
-            return 0;
-        }
-
-        Space::Space(xcb_connection_t *const &x_connection, const std::function<void()> &break_) :
+        Space::Space(xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const std::function<void()> &break_) :
                 _breakLoop(break_),
                 _x_connection(x_connection),
+                _x_default_screen(x_default_screen),
+                _xia_protocols(_internAtom("WM_PROTOCOLS")),
+                _xia_delete_window(_internAtom("WM_DELETE_WINDOW")),
                 _normal_pixel(_colorPixel(config::normal_color)),
                 _focus_pixel(_colorPixel(config::focus_color)),
-                _xia_protocols(XInternAtom(x_connection, "WM_PROTOCOLS", False)),
-                _xia_delete_window(XInternAtom(x_connection, "WM_DELETE_WINDOW", False)),
-                _mask_layer(XCreateSimpleWindow(_x_connection, XDefaultRootWindow(_x_connection), 0, 0, 1, 1, 0, _normal_pixel, _normal_pixel)),
+                _mask_layer(xcb_generate_id(x_connection)),
                 event_handlers(
                         {
-                                {MapNotify,       [&](const XEvent &event) {
-                                    if (!event.xmap.override_redirect) {
-                                        auto i = _leaves.find(event.xmap.window);
+                                {XCB_MAP_NOTIFY, [&](xcb_generic_event_t *const &event) {
+                                    auto map_notify = (xcb_map_notify_event_t *) event;
+                                    if (!map_notify->override_redirect) {
+                                        auto i = _leaves.find(map_notify->window);
                                         if (i == _leaves.end()) {
-                                            auto leaf = new node::Leaf(this, event.xmap.window);
+                                            auto leaf = new node::Leaf(this, map_notify->window);
 
                                             std::list<std::function<void()>> fl;
                                             if (!_active) {
                                                 fl.emplace_back([&]() {
                                                     _root = _view = leaf;
                                                 });
-                                                leaf->_configure({_x_connection_hv, -(int) config::border_width, -(int) config::border_width, _x_connection_width + config::border_width * 2, _x_connection_height + config::border_width * 2});
+                                                leaf->_configure({_root_hv, -config::border_width, -config::border_width, (uint16_t) (_root_width + config::border_width * 2), (uint16_t) (_root_height + config::border_width * 2)});
                                                 leaf->_refresh();
                                             } else {
                                                 if (_active == _view) {
@@ -78,12 +73,13 @@ namespace wm {
 
                                             leaf->_focus(true);
                                             _active = leaf;
-                                            _pointer_coordinate.record();
+                                            /*_pointer_coordinate.record();*/
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
                                     }
                                 }},
-                                {UnmapNotify,     [&](const XEvent &event) {
-                                    auto i = _leaves.find(event.xunmap.window);
+                                {UnmapNotify,    [&](xcb_generic_event_t *const &event) {
+                                    auto unmap_notify = (xcb_unmap_notify_event_t *) event;
+                                    auto i = _leaves.find(unmap_notify->window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
                                         if (leaf == _active) {
@@ -118,13 +114,14 @@ namespace wm {
                                             (*j)();
                                             j++;
                                         }));
-                                        _pointer_coordinate.record();
+                                        /*_pointer_coordinate.record();*/
 
                                         if (_exiting) closeActive(false);
                                     }
                                 }},
-                                {ConfigureNotify, [&](const XEvent &event) {
-                                    auto i = _leaves.find(event.xconfigure.window);
+                                /*{ConfigureNotify, [&](xcb_generic_event_t *const &event) {
+                                    auto configure_notify = (xcb_configure_notify_event_t *) event;
+                                    auto i = _leaves.find(configure_notify->window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
                                         if (_isMapped(leaf->_window)) {
@@ -158,19 +155,21 @@ namespace wm {
                                             else if (low == leaf->_window && ancestor == _view) XRaiseWindow(_x_connection, leaf->_window);
                                         }
                                     }
-                                }},
-                                {FocusIn,         [&](const XEvent &event) {
-                                    auto i = _leaves.find(event.xfocus.window);
+                                }},*/
+                                {FocusIn,        [&](xcb_generic_event_t *const &event) {
+                                    auto focus_in = (xcb_focus_in_event_t *) event;
+                                    auto i = _leaves.find(focus_in->event);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (leaf != _active && _active && _isMapped(_active->_window)) XSetInputFocus(_x_connection, _active->_window, RevertToParent, CurrentTime);
+                                        if (leaf != _active && _active /*&& _isMapped(_active->_window)*/) xcb_set_input_focus(_x_connection, RevertToParent, _active->_window, CurrentTime);
                                     }
                                 }},
-                                {EnterNotify,     [&](const XEvent &event) {
-                                    auto i = _leaves.find(event.xcrossing.window);
+                                {EnterNotify,    [&](xcb_generic_event_t *const &event) {
+                                    auto enter_notify = (xcb_enter_notify_event_t *) event;
+                                    auto i = _leaves.find(enter_notify->event);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (_active != leaf && !_pointer_coordinate.check()) {
+                                        if (_active != leaf /*&& !_pointer_coordinate.check()*/) {
                                             for (Node *j = leaf; j->_parent; ({
                                                 j->_parent->_iter_active = j->_parent_iter;
                                                 j = j->_parent;
@@ -183,11 +182,18 @@ namespace wm {
                                     }
                                 }}
                         }
-                ),
-                _pointer_coordinate(x_connection) {
-            XSetErrorHandler(&_handleError);
-            if (_xia_protocols == None || _xia_delete_window == None) error("XInternAtom");
-            XMapWindow(_x_connection, _mask_layer);
+                )/*,
+                _pointer_coordinate(x_connection)*/ {
+            if (_xia_protocols == None || _xia_delete_window == None) error("_internAtom");
+            xcb_create_window(x_connection,
+                              XCB_COPY_FROM_PARENT,
+                              _mask_layer,
+                              _x_default_screen->root,
+                              0, 0, _root_width, _root_height, 0,
+                              XCB_WINDOW_CLASS_INPUT_OUTPUT,
+                              _x_default_screen->root_visual,
+                              0, nullptr);
+            xcb_map_window(_x_connection, _mask_layer);
             _root = _view = _active = nullptr;
             _exiting = false;
             refresh();
@@ -198,18 +204,42 @@ namespace wm {
             _root = _view = _active = nullptr;
         }
 
-        unsigned long Space::_colorPixel(const char *const &cc) {
-            auto cm = DefaultColormap(_x_connection, XDefaultScreen(_x_connection));
-            XColor x_color;
-            if (XAllocNamedColor(_x_connection, cm, cc, &x_color, &x_color) == 0) error("XAllocNamedColor");
-            return x_color.pixel;
+        xcb_atom_t Space::_internAtom(const char *const &msg) {
+            xcb_generic_error_t *e = nullptr;
+            auto reply = xcb_intern_atom_reply(
+                    _x_connection,
+                    xcb_intern_atom(
+                            _x_connection,
+                            1,
+                            (uint16_t) strlen(msg),
+                            msg
+                    ),
+                    &e
+            );
+            if (e) error("xcb_intern_atom_reply");
+            return reply->atom;
         }
 
-        int Space::_isMapped(const Window &window) {
-            _has_error = false;
-            XGetWindowAttributes(_x_connection, window, &_window_attributes);
-            return !_has_error && _window_attributes.map_state;
+        uint32_t Space::_colorPixel(const std::vector<uint16_t> &rgb) {
+            xcb_generic_error_t *e = nullptr;
+            auto reply = xcb_alloc_color_reply(
+                    _x_connection,
+                    xcb_alloc_color(
+                            _x_connection,
+                            _x_default_screen->default_colormap,
+                            rgb[0], rgb[1], rgb[2]
+                    ),
+                    &e
+            );
+            if (e) error("xcb_alloc_color_reply");
+            return reply->pixel;
         }
+
+//        int Space::_isMapped(const Window &window) {
+//            _has_error = false;
+//            XGetWindowAttributes(_x_connection, window, &_window_attributes);
+//            return !_has_error && _window_attributes.map_state;
+//        }
 
         node::Branch *Space::_join(Node *const &node, Node *const &target, const FB &fb) {
             if (!node->_parent) return target->_receive(node, fb);
@@ -263,16 +293,24 @@ namespace wm {
         void Space::refresh() {
             static bool called = false;
 
-            _x_connection_width = (unsigned int) XDisplayWidth(_x_connection, DefaultScreen(_x_connection));
-            _x_connection_height = (unsigned int) XDisplayHeight(_x_connection, DefaultScreen(_x_connection));
+            auto geometry = xcb_get_geometry_reply(_x_connection, xcb_get_geometry(_x_connection, _x_default_screen->root), nullptr);
+            _root_width = geometry->width;
+            _root_height = geometry->height;
             if (!called) {
                 called = true;
-                _x_connection_hv = (HV) (_x_connection_width >= _x_connection_height);
+                _root_hv = (HV) (_root_width >= _root_height);
             }
-            XResizeWindow(_x_connection, _mask_layer, _x_connection_width, _x_connection_height);
-            XRaiseWindow(_x_connection, _mask_layer);
+            xcb_configure_window(
+                    _x_connection,
+                    _mask_layer,
+                    XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_STACK_MODE,
+                    ({
+                        uint32_t values[] = {_root_width, _root_height, XCB_STACK_MODE_ABOVE};
+                        values;
+                    })
+            );
             if (_view) {
-                _view->_configure({_x_connection_hv, -(int) config::border_width, -(int) config::border_width, _x_connection_width + config::border_width * 2, _x_connection_height + config::border_width * 2});
+                _view->_configure({_root_hv, -config::border_width, -config::border_width, uint16_t(_root_width + config::border_width * 2), uint16_t(_root_height + config::border_width * 2)});
                 _view->_refresh();
                 _view->_raise();
             }
@@ -319,7 +357,7 @@ namespace wm {
                 _move(_active, std::next(_active->_parent_iter, lround(0.5 + 1.5 * (fb ? 1 : -1))));
                 _activate(_active);
                 _active->_parent->_refresh();
-                _pointer_coordinate.record();
+                /*_pointer_coordinate.record();*/
             }
         }
 
@@ -392,7 +430,7 @@ namespace wm {
                     _activate(_active);
                     _active->_parent->_refresh();
                 }
-                _pointer_coordinate.record();
+                /*_pointer_coordinate.record();*/
             }
         }
 
@@ -401,11 +439,14 @@ namespace wm {
                 auto new_view = (fb ? _view->_activeChild() : _view->_parent);
                 if (new_view) {
                     new_view->_configure(_view->_attribute);
-                    XRaiseWindow(_x_connection, _mask_layer);
+                    xcb_configure_window(_x_connection, _mask_layer, XCB_CONFIG_WINDOW_STACK_MODE, ({
+                        uint32_t values[] = {XCB_STACK_MODE_ABOVE};
+                        values;
+                    }));
                     new_view->_refresh();
                     new_view->_raise();
                     _view = new_view;
-                    _pointer_coordinate.record();
+                    /*_pointer_coordinate.record();*/
                 }
             }
         }
@@ -417,7 +458,10 @@ namespace wm {
                 auto new_view = *i;
 
                 new_view->_configure(_view->_attribute);
-                XRaiseWindow(_x_connection, _mask_layer);
+                xcb_configure_window(_x_connection, _mask_layer, XCB_CONFIG_WINDOW_STACK_MODE, ({
+                    uint32_t values[] = {XCB_STACK_MODE_ABOVE};
+                    values;
+                }));
                 new_view->_refresh();
                 new_view->_raise();
                 _activate(new_view);
@@ -427,7 +471,7 @@ namespace wm {
 
                 _view = new_view;
                 _active = new_active;
-                _pointer_coordinate.record();
+                /*_pointer_coordinate.record();*/
             }
         }
 
@@ -435,18 +479,21 @@ namespace wm {
             auto new_view = (fb ? _active : _root);
             if (new_view) {
                 new_view->_configure(_view->_attribute);
-                XRaiseWindow(_x_connection, _mask_layer);
+                xcb_configure_window(_x_connection, _mask_layer, XCB_CONFIG_WINDOW_STACK_MODE, ({
+                    uint32_t values[] = {XCB_STACK_MODE_ABOVE};
+                    values;
+                }));
                 new_view->_refresh();
                 new_view->_raise();
                 _view = new_view;
-                _pointer_coordinate.record();
+                /*_pointer_coordinate.record();*/
             }
         }
 
         void Space::transpose() {
             if (_view) {
                 auto attribute = _view->_attribute;
-                attribute.hv = _x_connection_hv = HV(!_x_connection_hv);
+                attribute.hv = _root_hv = HV(!_root_hv);
                 _view->_configure(attribute);
                 _view->_refresh();
             }
@@ -454,19 +501,19 @@ namespace wm {
 
         void Space::closeActive(const bool &force) {
             if (_active) {
-                if (_isMapped(_active->_window)) {
-                    if (force) XDestroyWindow(_x_connection, _active->_window);
-                    else {
-                        XEvent event;
-                        event.type = ClientMessage;
-                        event.xclient.window = _active->_window;
-                        event.xclient.message_type = _xia_protocols;
-                        event.xclient.format = 32;
-                        event.xclient.data.l[0] = _xia_delete_window;
-                        event.xclient.data.l[1] = CurrentTime;
-                        XSendEvent(_x_connection, _active->_window, False, NoEventMask, &event);
-                    }
+//                if (_isMapped(_active->_window)) {
+                if (force) xcb_destroy_window(_x_connection, _active->_window);
+                else {
+                    auto event = new xcb_client_message_event_t();
+                    event->response_type = XCB_CLIENT_MESSAGE;
+                    event->window = _active->_window;
+                    event->type = _xia_protocols;
+                    event->format = 32;
+                    event->data.data32[0] = _xia_delete_window;
+                    event->data.data32[1] = CurrentTime;
+                    xcb_send_event(_x_connection, 0, _active->_window, XCB_EVENT_MASK_NO_EVENT, (const char *) event);
                 }
+//                }
             } else if (_exiting) _breakLoop();
         }
 
@@ -481,18 +528,29 @@ namespace wm {
         }
 
         namespace node {
-            Leaf::Leaf(Space *const &space, const Window &window) :
+            Leaf::Leaf(Space *const &space, const xcb_window_t &window) :
                     Node(space),
                     _window(window),
                     _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
-                if (space->_isMapped(window)) {
-                    XSetWindowBorderWidth(space->_x_connection, window, config::border_width);
-                    _attribute.x = space->_window_attributes.x;
-                    _attribute.y = space->_window_attributes.y;
-                    _attribute.width = space->_window_attributes.width + config::border_width * 2;
-                    _attribute.height = space->_window_attributes.height + config::border_width * 2;
-                    XSelectInput(space->_x_connection, window, leaf_event_mask);
-                }
+//                if (space->_isMapped(window)) {
+                xcb_configure_window(
+                        _space->_x_connection,
+                        window,
+                        XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                        ({
+                            uint32_t values[] = {config::border_width};
+                            values;
+                        })
+                );
+//                _attribute.x = space->_window_attributes.x;
+//                _attribute.y = space->_window_attributes.y;
+//                _attribute.width = space->_window_attributes.width + config::border_width * 2;
+//                _attribute.height = space->_window_attributes.height + config::border_width * 2;
+                xcb_change_window_attributes(space->_x_connection, window, XCB_CW_EVENT_MASK, ({
+                    uint32_t values[] = {leaf_event_mask};
+                    values;
+                }));
+//                }
             }
 
             Leaf::~Leaf() {
@@ -500,11 +558,22 @@ namespace wm {
             }
 
             void Leaf::_refresh() {
-                XMoveResizeWindow(_space->_x_connection, _window, _attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2);
+                xcb_configure_window(
+                        _space->_x_connection,
+                        _window,
+                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+                        ({
+                            int32_t values[] = {_attribute.x, _attribute.y, _attribute.width - config::border_width * 2, _attribute.height - config::border_width * 2};
+                            values;
+                        })
+                );
             }
 
             void Leaf::_raise() {
-                XRaiseWindow(_space->_x_connection, _window);
+                xcb_configure_window(_space->_x_connection, _window, XCB_CONFIG_WINDOW_STACK_MODE, ({
+                    uint32_t values[] = {XCB_STACK_MODE_ABOVE};
+                    values;
+                }));
             }
 
             Leaf *Leaf::_activeLeaf(const FB &) {
@@ -531,12 +600,19 @@ namespace wm {
             }
 
             void Leaf::_focus(const bool &yes) {
-                if (_space->_isMapped(_window)) {
-                    if (yes) {
-                        XSetWindowBorder(_space->_x_connection, _window, _space->_focus_pixel);
-                        XSetInputFocus(_space->_x_connection, _window, RevertToParent, CurrentTime);
-                    } else XSetWindowBorder(_space->_x_connection, _window, _space->_normal_pixel);
-                }
+//                if (_space->_isMapped(_window)) {
+                if (yes) {
+                    xcb_change_window_attributes(_space->_x_connection, _window, XCB_CW_BORDER_PIXEL, ({
+                        uint32_t values[] = {_space->_focus_pixel};
+                        values;
+                    }));
+                    xcb_set_input_focus(_space->_x_connection, RevertToParent, _window, CurrentTime);
+                } else
+                    xcb_change_window_attributes(_space->_x_connection, _window, XCB_CW_BORDER_PIXEL, ({
+                        uint32_t values[] = {_space->_normal_pixel};
+                        values;
+                    }));
+//                }
             }
 
             Branch::Branch(Space *const &space) : Node(space) {}
@@ -578,33 +654,45 @@ namespace wm {
             void Branch::_configureChildren() {
                 switch (_attribute.hv) {
                     case HV::HORIZONTAL: {
-                        auto s = (int) (_attribute.x + config::border_width);
-                        auto d = (unsigned int) ((_attribute.width - config::border_width * 2) / _children.size());
+                        auto s = (int16_t) (_attribute.x + config::border_width);
+                        auto d = (uint16_t) ((_attribute.width - config::border_width * 2) / _children.size());
                         for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
-                            (*i++)->_configure({HV(!_attribute.hv), s, _attribute.y + (int) config::border_width, d, _attribute.height - config::border_width * 2});
+                            (*i++)->_configure(
+                                    {
+                                            HV(!_attribute.hv),
+                                            s, (int16_t) (_attribute.y + config::border_width),
+                                            d, (uint16_t) (_attribute.height - config::border_width * 2)
+                                    }
+                            );
                             s += d;
                         }));
                         (*std::prev(_children.cend()))->_configure(
                                 {
                                         HV(!_attribute.hv),
-                                        s, _attribute.y + (int) config::border_width,
-                                        _attribute.x + _attribute.width - config::border_width - s, _attribute.height - config::border_width * 2
+                                        s, (int16_t) (_attribute.y + config::border_width),
+                                        (uint16_t) (_attribute.x + _attribute.width - config::border_width - s), (uint16_t) (_attribute.height - config::border_width * 2)
                                 }
                         );
                         break;
                     }
                     case HV::VERTICAL: {
-                        auto s = (int) (_attribute.y + config::border_width);
-                        auto d = (unsigned int) ((_attribute.height - config::border_width * 2) / _children.size());
+                        auto s = (int16_t) (_attribute.y + config::border_width);
+                        auto d = (uint16_t) ((_attribute.height - config::border_width * 2) / _children.size());
                         for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
-                            (*i++)->_configure({HV(!_attribute.hv), _attribute.x + (int) config::border_width, s, _attribute.width - config::border_width * 2, d});
+                            (*i++)->_configure(
+                                    {
+                                            HV(!_attribute.hv),
+                                            (int16_t) (_attribute.x + config::border_width), s,
+                                            (uint16_t) (_attribute.width - config::border_width * 2), d
+                                    }
+                            );
                             s += d;
                         }));
                         (*std::prev(_children.cend()))->_configure(
                                 {
                                         HV(!_attribute.hv),
-                                        _attribute.x + (int) config::border_width, s,
-                                        _attribute.width - config::border_width * 2, _attribute.y + _attribute.height - config::border_width - s
+                                        (int16_t) (_attribute.x + config::border_width), s,
+                                        (uint16_t) (_attribute.width - config::border_width * 2), (uint16_t) (_attribute.y + _attribute.height - config::border_width - s)
                                 }
                         );
                     }

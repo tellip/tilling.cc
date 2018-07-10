@@ -1,11 +1,14 @@
 #pragma once
 
-namespace wm {
-	namespace config {
-		const char *const socket_host = "127.0.0.1";
-		const in_port_t socket_port_base = 2056;
+#include <netinet/in.h>
+#include <vector>
 
-		const unsigned int border_width = 4;
-		const char *const normal_color = "Black", *const focus_color = "#466BB0";
-	}
+namespace wm {
+    namespace config {
+        const char *const socket_host = "127.0.0.1";
+        const in_port_t socket_port_base = 2056;
+
+        const uint16_t border_width = 4;
+        const std::vector<uint16_t> normal_color = {0, 0, 0}, focus_color = {70, 107, 176};
+    }
 }

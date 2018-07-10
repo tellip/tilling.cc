@@ -60,4 +60,15 @@ namespace wm {
 
         close(sock_client);
     };
+
+    const auto screen_of_display = [&](xcb_connection_t *c, int screen) -> xcb_screen_t * {
+        xcb_screen_iterator_t iter;
+
+        iter = xcb_setup_roots_iterator(xcb_get_setup(c));
+        for (; iter.rem; --screen, xcb_screen_next(&iter))
+            if (screen == 0)
+                return iter.data;
+
+        return nullptr;
+    };
 }
