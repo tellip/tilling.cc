@@ -47,7 +47,7 @@ namespace wm {
                 _mask_layer(xcb_generate_id(x_connection)),
                 event_handlers(
                         {
-                                {XCB_MAP_NOTIFY,   [&](xcb_generic_event_t *const &event) {
+                                {XCB_MAP_NOTIFY,       [&](xcb_generic_event_t *const &event) {
                                     auto map_notify = (xcb_map_notify_event_t *) event;
                                     if (!map_notify->override_redirect) {
                                         auto i = _leaves.find(map_notify->window);
@@ -89,7 +89,7 @@ namespace wm {
                                         } else error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
                                     }
                                 }},
-                                {XCB_UNMAP_NOTIFY, [&](xcb_generic_event_t *const &event) {
+                                {XCB_UNMAP_NOTIFY,     [&](xcb_generic_event_t *const &event) {
                                     auto unmap_notify = (xcb_unmap_notify_event_t *) event;
                                     auto i = _leaves.find(unmap_notify->window);
                                     if (i != _leaves.end()) {
@@ -132,67 +132,92 @@ namespace wm {
                                         if (_exiting) closeActive(false);
                                     }
                                 }},
-                                /*{ConfigureNotify, [&](xcb_generic_event_t *const &event) {
+                                {XCB_CONFIGURE_NOTIFY, [&](xcb_generic_event_t *const &event) {
                                     auto configure_notify = (xcb_configure_notify_event_t *) event;
                                     auto i = _leaves.find(configure_notify->window);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (_isMapped(leaf->_window)) {
-                                            if ((
-                                                    _window_attributes.x != leaf->_attribute.x ||
-                                                    _window_attributes.y != leaf->_attribute.y ||
-                                                    _window_attributes.width != leaf->_attribute.width - config::border_width * 2 ||
-                                                    _window_attributes.height != leaf->_attribute.height - config::border_width * 2
-                                            ))
-                                                leaf->_refresh();
+                                        {
+                                            auto reply = xcb_get_geometry_reply(_x_connection, xcb_get_geometry(_x_connection, leaf->_window), nullptr);
+                                            if (!reply) error("xcb_get_geometry_reply");
+                                            if (reply->x != leaf->_attribute.x)
+                                                xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_X, ({
+                                                    int16_t values[] = {leaf->_attribute.x};
+                                                    values;
+                                                }));
+                                            if (reply->y != leaf->_attribute.y)
+                                                xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_Y, ({
+                                                    int16_t values[] = {leaf->_attribute.y};
+                                                    values;
+                                                }));
+                                            if (reply->width != leaf->_attribute.width - config::border_width * 2)
+                                                xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_WIDTH, ({
+                                                    uint16_t values[] = {(uint16_t) (leaf->_attribute.width - config::border_width * 2)};
+                                                    values;
+                                                }));
+                                            if (reply->height != leaf->_attribute.height - config::border_width * 2)
+                                                xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_HEIGHT, ({
+                                                    uint16_t values[] = {(uint16_t) (leaf->_attribute.height - config::border_width * 2)};
+                                                    values;
+                                                }));
+                                        }
 
+                                        {
                                             Node *ancestor = leaf;
                                             while (ancestor && ancestor != _view) ancestor = ancestor->_parent;
 
-                                            auto low = [&]() {
-                                                Window rtn = 0, root, parent, *children;
-                                                unsigned int children_size;
-                                                XQueryTree(_x_connection, XDefaultRootWindow(_x_connection), &root, &parent, &children, &children_size);
-                                                for (auto j = 0; j < children_size; ({
-                                                    auto child = children[j++];
-                                                    if (child == leaf->_window || child == _mask_layer) {
-                                                        rtn = child;
-                                                        j = children_size;
-                                                    }
-                                                }));
-                                                delete[] children;
-                                                return rtn;
-                                            }();
+                                            xcb_window_t low;
+                                            auto reply = xcb_query_tree_reply(_x_connection, xcb_query_tree(_x_connection, _x_default_screen->root), nullptr);
+                                            if (!reply) error("xcb_query_tree_reply");
+                                            auto children = xcb_query_tree_children(reply);
+                                            for (auto j = 0; j < reply->children_len; ({
+                                                auto child = children[j++];
+                                                if (child == leaf->_window || child == _mask_layer) {
+                                                    low = child;
+                                                    j = reply->children_len;
+                                                }
+                                            }));
+                                            free(reply);
 
-                                            if (low == _mask_layer && ancestor != _view) XLowerWindow(_x_connection, leaf->_window);
-                                            else if (low == leaf->_window && ancestor == _view) XRaiseWindow(_x_connection, leaf->_window);
+                                            if (low == _mask_layer && ancestor != _view)
+                                                xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_STACK_MODE, ({
+                                                    uint32_t values[] = {XCB_STACK_MODE_BELOW};
+                                                    values;
+                                                }));
+                                            else if (low == leaf->_window && ancestor == _view)
+                                                xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_STACK_MODE, ({
+                                                    uint32_t values[] = {XCB_STACK_MODE_ABOVE};
+                                                    values;
+                                                }));
                                         }
+                                        xcb_flush(_x_connection);
                                     }
-                                }},*/
-                                /*{XCB_FOCUS_IN,     [&](xcb_generic_event_t *const &event) {
-                                    auto focus_in = (xcb_focus_in_event_t *) event;
-                                    auto i = _leaves.find(focus_in->event);
-                                    if (i != _leaves.end()) {
-                                        auto leaf = i->second;
-                                        if (leaf != _active && _active *//*&& _isMapped(_active->_window)*//*) xcb_set_input_focus(_x_connection, XCB_INPUT_FOCUS_PARENT, _active->_window, XCB_CURRENT_TIME);
-                                    }
-                                }},*/
-                                {XCB_ENTER_NOTIFY, [&](xcb_generic_event_t *const &event) {
+                                }},
+                                {XCB_ENTER_NOTIFY,     [&](xcb_generic_event_t *const &event) {
                                     auto enter_notify = (xcb_enter_notify_event_t *) event;
                                     auto i = _leaves.find(enter_notify->event);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (_active != leaf) {
-                                            if (!_pointer_coordinate.check()) {
-                                                for (Node *j = leaf; j->_parent; ({
-                                                    j->_parent->_iter_active = j->_parent_iter;
-                                                    j = j->_parent;
-                                                }));
+                                        if (_active != leaf && !_pointer_coordinate.check()) {
+                                            for (Node *j = leaf; j->_parent; ({
+                                                j->_parent->_iter_active = j->_parent_iter;
+                                                j = j->_parent;
+                                            }));
 
-                                                if (_active) _active->_focus(false);
-                                                leaf->_focus(true);
-                                                _active = leaf;
-                                            } else xcb_set_input_focus(_x_connection, XCB_INPUT_FOCUS_PARENT, _active->_window, XCB_CURRENT_TIME);
+                                            if (_active) _active->_focus(false);
+                                            leaf->_focus(true);
+                                            _active = leaf;
+                                            xcb_flush(_x_connection);
+                                        }
+                                    }
+                                }},
+                                {XCB_FOCUS_IN,         [&](xcb_generic_event_t *const &event) {
+                                    auto focus_in = (xcb_focus_in_event_t *) event;
+                                    auto i = _leaves.find(focus_in->event);
+                                    if (i != _leaves.end()) {
+                                        auto leaf = i->second;
+                                        if (leaf != _active && _active /*&& _isMapped(_active->_window)*/) {
+                                            xcb_set_input_focus(_x_connection, XCB_INPUT_FOCUS_PARENT, _active->_window, XCB_CURRENT_TIME);
                                             xcb_flush(_x_connection);
                                         }
                                     }
@@ -224,16 +249,7 @@ namespace wm {
         }
 
         xcb_atom_t Space::_internAtom(const char *const &msg) {
-            auto reply = xcb_intern_atom_reply(
-                    _x_connection,
-                    xcb_intern_atom(
-                            _x_connection,
-                            0,
-                            (uint16_t) strlen(msg),
-                            msg
-                    ),
-                    nullptr
-            );
+            auto reply = xcb_intern_atom_reply(_x_connection, xcb_intern_atom(_x_connection, 0, (uint16_t) strlen(msg), msg), nullptr);
             if (!reply) error("xcb_intern_atom_reply");
             auto atom = reply->atom;
             free(reply);
@@ -241,17 +257,12 @@ namespace wm {
         }
 
         uint32_t Space::_colorPixel(const std::vector<uint16_t> &rgb) {
-            auto reply = xcb_alloc_color_reply(
-                    _x_connection,
-                    xcb_alloc_color(
-                            _x_connection,
-                            _x_default_screen->default_colormap,
-                            (uint16_t) (rgb[0] * 65535.0 / 255),
-                            (uint16_t) (rgb[1] * 65535.0 / 255),
-                            (uint16_t) (rgb[2] * 65535.0 / 255)
-                    ),
-                    nullptr
-            );
+            auto reply = xcb_alloc_color_reply(_x_connection, xcb_alloc_color(
+                    _x_connection, _x_default_screen->default_colormap,
+                    (uint16_t) (rgb[0] * 65535.0 / 255),
+                    (uint16_t) (rgb[1] * 65535.0 / 255),
+                    (uint16_t) (rgb[2] * 65535.0 / 255)
+            ), nullptr);
             if (!reply) error("xcb_alloc_color_reply");
             auto pixel = reply->pixel;
             free(reply);
@@ -564,6 +575,13 @@ namespace wm {
                     _window(window),
                     _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
 //                if (space->_isMapped(window)) {
+                auto reply = xcb_get_geometry_reply(_space->_x_connection, xcb_get_geometry(_space->_x_connection, _window), nullptr);
+                if (!reply) error("xcb_get_geometry_reply");
+                _attribute.x = reply->x;
+                _attribute.y = reply->y;
+                _attribute.width = (uint16_t) (reply->width + config::border_width * 2);
+                _attribute.height = (uint16_t) (reply->height + config::border_width * 2);
+
                 xcb_configure_window(
                         _space->_x_connection,
                         window,
