@@ -51,10 +51,6 @@ namespace wm {
 
             uint32_t _colorPixel(const std::vector<uint16_t> &);
 
-//            XWindowAttributes _window_attributes;
-
-//            int _isMapped(const Window &);
-
             node::Branch *_join(Node *const &, Node *const &, const FB &);
 
             void _move(Node *const &, const std::list<Node *>::iterator &);

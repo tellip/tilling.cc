@@ -216,7 +216,7 @@ namespace wm {
                                     auto i = _leaves.find(focus_in->event);
                                     if (i != _leaves.end()) {
                                         auto leaf = i->second;
-                                        if (leaf != _active && _active /*&& _isMapped(_active->_window)*/) {
+                                        if (leaf != _active && _active) {
                                             xcb_set_input_focus(_x_connection, XCB_INPUT_FOCUS_PARENT, _active->_window, XCB_CURRENT_TIME);
                                             xcb_flush(_x_connection);
                                         }
@@ -268,12 +268,6 @@ namespace wm {
             free(reply);
             return pixel;
         }
-
-//        int Space::_isMapped(const Window &window) {
-//            _has_error = false;
-//            XGetWindowAttributes(_x_connection, window, &_window_attributes);
-//            return !_has_error && _window_attributes.map_state;
-//        }
 
         node::Branch *Space::_join(Node *const &node, Node *const &target, const FB &fb) {
             if (!node->_parent) return target->_receive(node, fb);
@@ -541,7 +535,6 @@ namespace wm {
 
         void Space::closeActive(const bool &force) {
             if (_active) {
-//                if (_isMapped(_active->_window)) {
                 if (force) xcb_destroy_window(_x_connection, _active->_window);
                 else {
                     auto client_message = new xcb_client_message_event_t();
@@ -555,7 +548,6 @@ namespace wm {
                     delete client_message;
                 }
                 xcb_flush(_x_connection);
-//                }
             } else if (_exiting) _breakLoop();
         }
 
@@ -574,7 +566,6 @@ namespace wm {
                     Node(space),
                     _window(window),
                     _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
-//                if (space->_isMapped(window)) {
                 auto reply = xcb_get_geometry_reply(_space->_x_connection, xcb_get_geometry(_space->_x_connection, _window), nullptr);
                 if (!reply) error("xcb_get_geometry_reply");
                 _attribute.x = reply->x;
@@ -595,7 +586,6 @@ namespace wm {
                     uint32_t values[] = {leaf_event_mask};
                     values;
                 }));
-//                }
             }
 
             Leaf::~Leaf() {
@@ -645,7 +635,6 @@ namespace wm {
             }
 
             void Leaf::_focus(const bool &yes) {
-//                if (_space->_isMapped(_window)) {
                 if (yes) {
                     xcb_change_window_attributes(_space->_x_connection, _window, XCB_CW_BORDER_PIXEL, ({
                         uint32_t values[] = {_space->_focus_pixel};
@@ -657,7 +646,6 @@ namespace wm {
                         uint32_t values[] = {_space->_normal_pixel};
                         values;
                     }));
-//                }
             }
 
             Branch::Branch(Space *const &space) : Node(space) {}
