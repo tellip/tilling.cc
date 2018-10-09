@@ -19,9 +19,11 @@ sxhkd  -------->  matc  <------>  matwm
 
 ```
 cd [path_to_repo]
-./build.sh
-ln -s [path_to_repo]/cmake-build/matwm [path_to_binary]
-ln -s [path_to_repo]/cmake-build/matc [path_to_binary]
+
+cmake
+make
+make install
+
 nano ~/.xinitrc # add "exec matwm"
 nano ~/.config/sxhkdrc # refer to sxhkdrc.sample
 nano ~/.config/matwm/bashrc # refer to bashrc.sample

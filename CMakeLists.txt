@@ -8,3 +8,14 @@ FILE(GLOB Server src/*.hh src/server/*)
 add_executable(matwm ${Server})
 FILE(GLOB Client src/*.hh src/client.cc)
 add_executable(matc ${Client})
+
+install(
+        TARGETS matwm matc
+        RUNTIME DESTINATION bin
+)
+
+add_custom_target(
+        uninstall
+        COMMAND rm -f ${CMAKE_INSTALL_PREFIX}/bin/matwm
+        COMMAND rm -f ${CMAKE_INSTALL_PREFIX}/bin/matc
+)
