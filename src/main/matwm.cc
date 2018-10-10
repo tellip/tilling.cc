@@ -4,7 +4,7 @@ int main() {
     system(({
         std::stringstream ss;
         ss << "if [ -f " << project::config::config_directory << "/bashrc ]; then\n"
-           << "\tbash " << project::config::config_directory << "/bashrc ]; then\n"
+           << "\tbash " << project::config::config_directory << "/bashrc\n"
            << "fi";
         ss.str().c_str();
     }));
@@ -16,7 +16,7 @@ int main() {
                 system(({
                     std::stringstream ss;
                     ss << "if [ -f " << project::config::config_directory << "/bash_logout ]; then\n"
-                       << "\tbash " << project::config::config_directory << "/bash_logout ]; then\n"
+                       << "\tbash " << project::config::config_directory << "/bash_logout\n"
                        << "fi";
                     ss.str().c_str();
                 }));
