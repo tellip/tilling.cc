@@ -8,18 +8,13 @@ FILE(GLOB Source src/*.h src/*.cc)
 add_executable(matwm ${Client} src/main/matwm.cc)
 add_executable(matc ${Client} src/main/matc.cc)
 
-#FILE(GLOB Server src.old/*.hh src.old/server/*)
-#add_executable(matwm ${Server})
-#FILE(GLOB Client src.old/*.hh src.old/client.cc)
-#add_executable(matc ${Client})
-#
-#install(
-#        TARGETS matwm matc
-#        RUNTIME DESTINATION bin
-#)
-#
-#add_custom_target(
-#        uninstall
-#        COMMAND rm -f ${CMAKE_INSTALL_PREFIX}/bin/matwm
-#        COMMAND rm -f ${CMAKE_INSTALL_PREFIX}/bin/matc
-#)
+install(
+        TARGETS matwm matc
+        RUNTIME DESTINATION bin
+)
+
+add_custom_target(
+        uninstall
+        COMMAND rm -f ${CMAKE_INSTALL_PREFIX}/bin/matwm
+        COMMAND rm -f ${CMAKE_INSTALL_PREFIX}/bin/matc
+)
