@@ -8,6 +8,7 @@
 #include <list>
 #include <netinet/in.h>
 #include <queue>
+#include <sstream>
 #include <stdint-gcc.h>
 #include <thread>
 #include <unistd.h>
