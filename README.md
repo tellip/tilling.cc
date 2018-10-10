@@ -20,7 +20,7 @@ sxhkd  -------->  matc  <------>  matwm
 ```
 cd [path_to_repo]
 
-cmake
+cmake .
 make
 make install
 
