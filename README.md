@@ -25,8 +25,8 @@ make
 make install
 
 nano ~/.xinitrc # add "exec matwm"
-nano ~/.config/sxhkdrc # refer to sxhkdrc.sample
-nano ~/.config/matwm/bashrc # refer to bashrc.sample
-nano ~/.config/matwm/bash_logout # refer to bash_logout.sample
+nano ~/.config/sxhkdrc # refer to *sample/sxhkdrc*
+nano ~/.config/matwm/bashrc # refer to *sample/bashrc*
+nano ~/.config/matwm/bash_logout # refer to *sample/bash_logout*
 startx
 ```
