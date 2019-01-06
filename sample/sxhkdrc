@@ -1,5 +1,5 @@
 XF86MonBrightness{Down,Up}
-	xbacklight -{dec,inc} 5
+	xbacklight -{dec,inc} 5 && eval 'xbacklight > ~/.cache/BACKLIGHT &'
 
 XF86AudioMute
 	amixer set Master toggle
@@ -21,9 +21,9 @@ super + {_,shift +,alt +} {Up,Right,Down,Left}
 	matc --{focus,move,reparent}-{up,right,down,left}
 super + {Escape,grave}
 	matc --view-{out,in}
-super + {f,shift + f}
+super + {f,a}
 	matc --view-{leaf,root}
-super + {shift + Tab,Tab}
+alt + {shift + Tab,Tab}
 	matc --view-{backward,forward}
 super + Page_{Up,Down}
 	matc --view-{backward,forward}
@@ -31,3 +31,5 @@ super + space
 	matc --transpose
 super + shift + {q,k}
 	matc --{close,kill}-window
+
+scrot -se 'xclip -selection clipboard -t image/png -i $f && rm $f'

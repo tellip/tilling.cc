@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-if [ -f $HOME/.cache/XBACKLIGHT ]; then
-	xbacklight -set $(cat $HOME/.cache/XBACKLIGHT)
+if [ -f $HOME/.cache/BACKLIGHT ]; then
+	xbacklight -set $(cat $HOME/.cache/BACKLIGHT)
 fi &
 
 sxhkd &
