@@ -32,4 +32,5 @@ super + space
 super + shift + {q,k}
 	matc --{close,kill}-window
 
-scrot -se 'xclip -selection clipboard -t image/png -i $f && rm $f'
+@XF86LaunchA
+	scrot -se 'xclip -selection clipboard -t image/png -i $f && rm $f'
