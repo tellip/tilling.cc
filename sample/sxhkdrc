@@ -1,5 +1,5 @@
 XF86MonBrightness{Down,Up}
-	xbacklight -{dec,inc} 5 && eval 'xbacklight > ~/.cache/BACKLIGHT &'
+	xbacklight -{dec,inc} 5
 
 XF86AudioMute
 	amixer set Master toggle

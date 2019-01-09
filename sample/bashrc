@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-if [ -f $HOME/.cache/BACKLIGHT ]; then
-	xbacklight -set $(cat $HOME/.cache/BACKLIGHT)
-fi &
+redshift -l 29.59:106.54 &
 
 sxhkd &
