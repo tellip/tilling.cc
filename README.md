@@ -22,7 +22,7 @@ cd [path_to_repo]
 
 cmake .
 make
-make install
+cp mat* ~/bin # make sure '~/bin' is in environment variable 'PATH'
 
 nano ~/.xinitrc # add "exec matwm"
 nano ~/.config/sxhkdrc # refer to *sample/sxhkdrc*
