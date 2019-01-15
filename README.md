@@ -24,9 +24,8 @@ cmake .
 make
 cp mat* ~/bin # make sure '~/bin' is in environment variable 'PATH'
 
-nano ~/.xinitrc # add "exec matwm"
-nano ~/.config/sxhkdrc # refer to *sample/sxhkdrc*
-nano ~/.config/matwm/bashrc # refer to *sample/bashrc*
-nano ~/.config/matwm/bash_logout # refer to *sample/bash_logout*
+nano ~/.config/sxhkdrc          # refer to      *sample/sxhkdrc*
+nano ~/.config/matwm/matwmrc    # refer to      *sample/matwmrc*
+nano ~/.xinitrc                 # add           '~/.config/matwm/matwmrc &' and 'exec matwm'
 startx
 ```

@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-redshift -l 29.59:106.54 &
-
-sxhkd &
