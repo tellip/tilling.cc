@@ -66,7 +66,7 @@ namespace project {
 
             void focus(const HV &, const FB &);
 
-            void move(const HV &, const FB &);
+            void reorder(const HV &, const FB &);
 
             void reparent(const HV &, const FB &);
 
@@ -199,17 +199,17 @@ namespace project {
                         space.focus(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-                    {"move-up",        [&]() {
-                        space.move(HV::VERTICAL, FB::BACKWARD);
+                    {"reorder-up",        [&]() {
+                        space.reorder(HV::VERTICAL, FB::BACKWARD);
                     }},
-                    {"move-right",     [&]() {
-                        space.move(HV::HORIZONTAL, FB::FORWARD);
+                    {"reorder-right",     [&]() {
+                        space.reorder(HV::HORIZONTAL, FB::FORWARD);
                     }},
-                    {"move-down",      [&]() {
-                        space.move(HV::VERTICAL, FB::FORWARD);
+                    {"reorder-down",      [&]() {
+                        space.reorder(HV::VERTICAL, FB::FORWARD);
                     }},
-                    {"move-left",      [&]() {
-                        space.move(HV::HORIZONTAL, FB::BACKWARD);
+                    {"reorder-left",      [&]() {
+                        space.reorder(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
                     {"reparent-up",    [&]() {

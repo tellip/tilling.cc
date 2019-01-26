@@ -409,7 +409,7 @@ namespace project {
             }
         }
 
-        void Space::move(const HV &hv, const FB &fb) {
+        void Space::reorder(const HV &hv, const FB &fb) {
             if (_active && _active != _view && _active->_parent->_attribute.hv == hv) {
                 _move(_active, std::next(_active->_parent_iter, lround(0.5 + 1.5 * (fb ? 1 : -1))));
                 _activate(_active);

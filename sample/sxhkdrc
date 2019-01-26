@@ -18,7 +18,7 @@ super + shift + e
 super + F5
 	matc --refresh
 super + {_,shift +,alt +} {Up,Right,Down,Left}
-	matc --{focus,move,reparent}-{up,right,down,left}
+	matc --{focus,reorder,reparent}-{up,right,down,left}
 super + {Escape,grave}
 	matc --view-{out,in}
 super + {f,a}
