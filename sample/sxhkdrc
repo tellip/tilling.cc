@@ -33,4 +33,5 @@ super + shift + {q,k}
 	matc --{close,kill}-window
 
 @XF86LaunchA
-	scrot -se 'xclip -selection clipboard -t image/png -i $f && rm $f'
+	scrot -se 'xclip -selection clipboard -t image/png -i $f && mv $f ~/.cache/SCREEN_SHOT.png'
+	#import ~/.cache/SCREEN_SHOT.png && xclip -selection clipboard -t image/png -i ~/.cache/SCREEN_SHOT.png
