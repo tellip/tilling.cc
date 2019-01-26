@@ -70,6 +70,8 @@ namespace project {
 
             void reparent(const HV &, const FB &);
 
+            void reorganize(const HV &, const FB &);
+
             void viewResize(const FB &);
 
             void viewMove(const FB &);
@@ -199,16 +201,16 @@ namespace project {
                         space.focus(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
-                    {"reorder-up",        [&]() {
+                    {"reorder-up",     [&]() {
                         space.reorder(HV::VERTICAL, FB::BACKWARD);
                     }},
-                    {"reorder-right",     [&]() {
+                    {"reorder-right",  [&]() {
                         space.reorder(HV::HORIZONTAL, FB::FORWARD);
                     }},
-                    {"reorder-down",      [&]() {
+                    {"reorder-down",   [&]() {
                         space.reorder(HV::VERTICAL, FB::FORWARD);
                     }},
-                    {"reorder-left",      [&]() {
+                    {"reorder-left",   [&]() {
                         space.reorder(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
@@ -223,6 +225,19 @@ namespace project {
                     }},
                     {"reparent-left",  [&]() {
                         space.reparent(HV::HORIZONTAL, FB::BACKWARD);
+                    }},
+
+                    {"reorganize-up",    [&]() {
+                        space.reorganize(HV::VERTICAL, FB::BACKWARD);
+                    }},
+                    {"reorganize-right", [&]() {
+                        space.reorganize(HV::HORIZONTAL, FB::FORWARD);
+                    }},
+                    {"reorganize-down",  [&]() {
+                        space.reorganize(HV::VERTICAL, FB::FORWARD);
+                    }},
+                    {"reorganize-left",  [&]() {
+                        space.reorganize(HV::HORIZONTAL, FB::BACKWARD);
                     }},
 
                     {"view-in",        [&]() {
