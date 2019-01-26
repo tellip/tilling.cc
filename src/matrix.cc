@@ -583,15 +583,21 @@ namespace project {
                         j++;
                     }));
                 } else {
-//                    if (_view == _active->_parent) {
                     std::list<std::function<void()>> fl;
+
+                    if (_active->_parent == _view) {
+                        fl.emplace_back([&]() {
+                            _view = _active->_parent;
+                        });
+                        if (_root == _view) {
+                            fl.emplace_back([&]() {
+                                _root = _view;
+                            });
+                        }
+                    }
 
                     auto attribute = _active->_parent->_attribute;
                     if (_root == _active->_parent) {
-                        fl.emplace_back([&]() {
-                            _root = _active->_parent;
-                        });
-
                         auto rest = _quit(_active);
                         _join(rest, _active, FB(!fb));
                     } else {
@@ -602,17 +608,11 @@ namespace project {
                         _join(rest, _active, FB(!fb));
                     }
                     _active->_parent->_configure(attribute);
-//                        _view = _active->_parent;
 
                     for (auto j = fl.cbegin(); j != fl.cend(); ({
                         (*j)();
                         j++;
                     }));
-//                    } else {
-//                        auto rest = _quit(_active);
-//                        _activate(rest);
-//                        _join(_active, rest->_parent, fb);
-//                    }
                     _activate(_active);
                     _active->_parent->_refresh();
                 }
