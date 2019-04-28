@@ -1,4 +1,4 @@
-#include "../project.cc"
+#include "project.cc"
 
 int main(int argc, char *argv[]) {
     for (auto i = 0; i < argc; ({

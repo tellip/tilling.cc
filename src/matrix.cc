@@ -1,7 +1,6 @@
 #include "matrix.h"
 
-namespace project {
-    namespace matrix {
+namespace project::matrix {
         PointerCoordinate::PointerCoordinate(xcb_connection_t *const &x_connection,
                                              xcb_screen_t *const &x_default_screen) : _x_connection(x_connection),
                                                                                       _x_default_screen(
@@ -473,80 +472,6 @@ namespace project {
             }
         }
 
-        /*void Space::reparent(const HV &hv, const FB &fb) {
-            if (_active && _active != _view) {
-                if (hv == _active->_parent->_attribute.hv) {
-                    std::list<std::function<void()>> fl;
-                    if (_active->_parent->_children.size() == 2) {
-                        fl.emplace_back([&]() {
-                            _active->_parent->_refresh();
-                        });
-                    } else {
-                        fl.emplace_back([&]() {
-                            _active->_parent->_parent->_refresh();
-                        });
-                    }
-                    if (_active->_parent == _view && _active->_parent->_children.size() <= 2) {
-                        fl.emplace_back([&]() {
-                            _view = _active->_parent;
-                        });
-                        if (_root == _view) {
-                            fl.emplace_back([&]() {
-                                _root = _view;
-                            });
-                        }
-                    }
-
-                    auto i = std::next(_active->_parent_iter, fb ? 1 : -1);
-                    if (i == _active->_parent->_children.end()) i = std::next(i, fb ? 1 : -1);
-                    auto sibling = *i;
-                    _quit(_active);
-                    _join(_active, sibling, FB(!fb));
-                    _activate(_active);
-
-                    for (auto j = fl.cbegin(); j != fl.cend(); ({
-                        (*j)();
-                        j++;
-                    }));
-                } else {
-                    if (_view == _active->_parent) {
-                        std::list<std::function<void()>> fl;
-
-                        auto attribute = _view->_attribute;
-                        if (_root == _view) {
-                            fl.emplace_back([&]() {
-                                _root = _view;
-                            });
-
-                            auto rest = _quit(_active);
-                            _join(rest, _active, FB(!fb));
-                        } else {
-                            auto rest = _quit(_active);
-                            _activate(rest);
-                            _join(_active, rest->_parent, fb);
-                            _quit(rest);
-                            _join(rest, _active, FB(!fb));
-                        }
-                        _active->_parent->_configure(attribute);
-                        _view = _active->_parent;
-
-                        for (auto j = fl.cbegin(); j != fl.cend(); ({
-                            (*j)();
-                            j++;
-                        }));
-                    } else {
-                        auto rest = _quit(_active);
-                        _activate(rest);
-                        _join(_active, rest->_parent, fb);
-                    }
-                    _activate(_active);
-                    _active->_parent->_refresh();
-                }
-                xcb_flush(_x_connection);
-                _pointer_coordinate.record();
-            }
-        }*/
-
         void Space::reorganize(const HV &hv, const FB &fb) {
             if (_active && _active != _view) {
                 if (hv == _active->_parent->_attribute.hv) {
@@ -897,4 +822,3 @@ namespace project {
             }
         }
     }
-}

@@ -2,8 +2,7 @@
 
 #include "project.h"
 
-namespace project {
-    namespace server {
+namespace project::server {
         using EventHandler=std::function<void(xcb_generic_event_t *const &)>;
         using EventHandlers=std::unordered_map<
                 int,
@@ -16,7 +15,7 @@ namespace project {
         >;
 
         auto server = [](const auto &callback) {
-            sockaddr_in sai_command/*, sai_command_helper, sai_event_helper*/;
+            sockaddr_in sai_command{}/*, sai_command_helper, sai_event_helper*/;
             auto sock_command = helper::createSocket(helper::command_port, sai_command)/*, sock_command_helper = createSocket(command_helper_port, sai_command_helper), sock_event_helper = createSocket(event_helper_port, sai_event_helper)*/;
 
             xcb_connection_t *x_connection;
@@ -113,4 +112,3 @@ namespace project {
             );
         };
     }
-}

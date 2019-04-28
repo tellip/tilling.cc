@@ -1,4 +1,4 @@
-#include "../project.cc"
+#include "project.cc"
 
 int main() {
     project::server::server([&](const auto &x_connection, const auto &x_default_screen, const auto &break_, const auto &loop, const auto &clean) {

@@ -19,31 +19,29 @@
 #include "config.h"
 #include "helper.h"
 
-namespace project {
-    namespace matrix {
-        enum HV {
-            HORIZONTAL = true, VERTICAL = false
-        };
+namespace project::matrix {
+    enum HV {
+        HORIZONTAL = true, VERTICAL = false
+    };
 
-        enum FB {
-            FORWARD = true, BACKWARD = false
-        };
+    enum FB {
+        FORWARD = true, BACKWARD = false
+    };
 
-        class PointerCoordinate;
+    class PointerCoordinate;
 
-        class Space;
+    class Space;
 
-        struct Attribute;
+    struct Attribute;
 
-        class Node;
+    class Node;
 
-        namespace node {
-            class Branch;
+    namespace node {
+        class Branch;
 
-            class Leaf;
-        }
+        class Leaf;
     }
 }
 
-#include "server.h"
+#include "server.hh"
 #include "matrix.h"

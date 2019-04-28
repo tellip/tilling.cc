@@ -9,7 +9,7 @@ XF86Audio{Lower,Raise}Volume
 super + d
 	dmenu_run
 super + Return
-	termite
+	xterm
 super + l
 	slock
 

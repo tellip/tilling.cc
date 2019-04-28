@@ -9,7 +9,5 @@ namespace project {
 
         const uint16_t border_width = 1;
         const std::vector<uint16_t> normal_color = {0, 0, 0}, focus_color = {0, 255, 0};
-
-        const auto config_directory = "$HOME/.config/matwm";
     }
 }
