@@ -16,9 +16,6 @@
 #include <vector>
 #include <xcb/xcb.h>
 
-#include "config.h"
-#include "helper.h"
-
 namespace project::matrix {
     enum HV {
         HORIZONTAL = true, VERTICAL = false
@@ -43,5 +40,7 @@ namespace project::matrix {
     }
 }
 
+#include "config.h"
+#include "helper.h"
 #include "server.hh"
 #include "matrix.h"
