@@ -1,6 +1,6 @@
-#include "matrix.h"
+#include "tree.h"
 
-namespace project::matrix {
+namespace project::tree {
         PointerCoordinate::PointerCoordinate(xcb_connection_t *const &x_connection,
                                              xcb_screen_t *const &x_default_screen) : _x_connection(x_connection),
                                                                                       _x_default_screen(

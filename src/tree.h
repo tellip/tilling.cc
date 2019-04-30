@@ -1,8 +1,8 @@
 #pragma once
 
-#include "project.h"
+#include "wm.h"
 
-namespace project::matrix {
+namespace project::tree {
         class PointerCoordinate {
             xcb_connection_t *const _x_connection;
             xcb_screen_t *const _x_default_screen;
@@ -175,7 +175,7 @@ namespace project::matrix {
         const uint32_t root_event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
         const uint32_t leaf_event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE;
 
-        auto matrix = [](xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const auto &breakLoop, const auto &callback) {
+        auto tree = [](xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const auto &breakLoop, const auto &callback) {
             auto space = Space(x_connection, x_default_screen, breakLoop);
             space.refresh();
             server::CommandHandlers command_handlers = {
