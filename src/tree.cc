@@ -49,8 +49,7 @@ namespace project::tree {
                             {XCB_MAP_NOTIFY,       [&](xcb_generic_event_t *const &event) {
                                 auto map_notify = (xcb_map_notify_event_t *) event;
                                 if (!map_notify->override_redirect) {
-                                    auto i = _leaves.find(map_notify->window);
-                                    if (i == _leaves.end()) {
+                                    if (map_notify->window != _mask_layer && _leaves.find(map_notify->window) == _leaves.end()) {
                                         auto leaf = new node::Leaf(this, map_notify->window);
 
                                         std::list<std::function<void()>> fl;
@@ -214,7 +213,7 @@ namespace project::tree {
                                 auto i = _leaves.find(enter_notify->event);
                                 if (i != _leaves.end()) {
                                     auto leaf = i->second;
-                                    if ((!_manual_refreshing ? true : (_manual_refreshing = false)) && _active != leaf && !_pointer_coordinate.check()) {
+                                    if (/*(!_manual_refreshing ? true : (_manual_refreshing = false)) &&*/ _active != leaf && !_pointer_coordinate.check()) {
                                         for (Node *j = leaf; j->_parent; ({
                                             j->_parent->_iter_active = j->_parent_iter;
                                             j = j->_parent;
@@ -252,12 +251,9 @@ namespace project::tree {
                 0, nullptr
         );
         xcb_map_window(_x_connection, _mask_layer);
-        xcb_change_window_attributes(_x_connection, _mask_layer, XCB_CW_BACK_PIXEL, ({
-            uint32_t values[] = {_normal_pixel};
-            values;
-        }));
         _root = _view = _active = nullptr;
         _exiting = false;
+        _manual_refreshing = false;
         refresh();
     }
 
@@ -372,6 +368,10 @@ namespace project::tree {
             _root_hv = (HV) (_root_width >= _root_height);
         }
 
+        xcb_change_window_attributes(_x_connection, _mask_layer, XCB_CW_BACK_PIXEL, ({
+            uint32_t values[] = {_normal_pixel};
+            values;
+        }));
         xcb_configure_window(_x_connection, _mask_layer, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, ({
             uint16_t values[] = {_root_width, _root_height};
             values;
@@ -380,6 +380,7 @@ namespace project::tree {
             uint32_t values[] = {_root_width, _root_height, XCB_STACK_MODE_ABOVE};
             values;
         }));
+
         if (_view) {
             _view->_configure(
                     {
@@ -672,6 +673,7 @@ namespace project::tree {
                 Node(space),
                 _window(window),
                 _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
+            _focused = false;
             auto reply = xcb_get_geometry_reply(_space->_x_connection,
                                                 xcb_get_geometry(_space->_x_connection, _window), nullptr);
             if (!reply) helper::error("xcb_get_geometry_reply");
@@ -709,6 +711,7 @@ namespace project::tree {
                         values;
                     })
             );
+            _focus(_focused);
         }
 
         void Leaf::_raise() {
@@ -742,8 +745,9 @@ namespace project::tree {
             return new_parent;
         }
 
-        void Leaf::_focus(const bool &yes) {
-            if (yes) {
+        void Leaf::_focus(const bool &focused) {
+            _focused = focused;
+            if (focused) {
                 xcb_change_window_attributes(_space->_x_connection, _window, XCB_CW_BORDER_PIXEL, ({
                     uint32_t values[] = {_space->_focused_pixel};
                     values;

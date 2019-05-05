@@ -38,7 +38,7 @@ namespace project::tree {
 
         PointerCoordinate _pointer_coordinate;
 
-        bool _manual_refreshing = false;
+        bool _manual_refreshing;
         bool _exiting;
     public:
         const server::EventHandlers event_handlers;
@@ -127,6 +127,7 @@ namespace project::tree {
         class Leaf : public Node {
             const xcb_window_t _window;
             const std::unordered_map<xcb_window_t, Leaf *>::iterator _leaves_iter;
+            bool _focused;
 
             Leaf(Space *const &, const xcb_window_t &);
 
