@@ -17,8 +17,8 @@ int main(int argc, char **argv) {
                           << "\t" << "client ...\n";
             }},
             {"server", []() {
-                project::server::server([&](const auto &x_connection, const auto &x_default_screen, const auto &break_, const auto &loop, const auto &clean) {
-                    project::tree::tree(x_connection, x_default_screen, break_, [&](const auto &command_handlers, const auto &root_event_mask, const auto &leaf_event_mask, const auto &event_handlers) {
+                wm::server::server([&](const auto &x_connection, const auto &x_default_screen, const auto &break_, const auto &loop, const auto &clean) {
+                    wm::tree::tree(x_connection, x_default_screen, break_, [&](const auto &command_handlers, const auto &root_event_mask, const auto &leaf_event_mask, const auto &event_handlers) {
                         loop(command_handlers, root_event_mask, leaf_event_mask, event_handlers, [&](const auto &join) {
                             join();
                             clean();
@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
             {"client", [&]() {
                 for (auto i = 2; i < argc; ({
                     std::string arg = argv[i];
-                    if (arg.size() > 2 && arg.substr(0, 2) == "--" && arg[2] != '#') project::helper::sendSocket(project::helper::command_port(), arg.substr(2));
+                    if (arg.size() > 2 && arg.substr(0, 2) == "--" && arg[2] != '#') wm::helper::sendSocket(wm::helper::command_port(), arg.substr(2));
                     i++;
                 }));
             }}

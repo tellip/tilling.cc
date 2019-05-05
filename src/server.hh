@@ -2,7 +2,7 @@
 
 #include "wm.h"
 
-namespace project::server {
+namespace wm::server {
         using EventHandler=std::function<void(xcb_generic_event_t *const &)>;
         using EventHandlers=std::unordered_map<
                 int,

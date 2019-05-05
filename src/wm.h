@@ -20,7 +20,7 @@
 #include <vector>
 #include <xcb/xcb.h>
 
-namespace project::tree {
+namespace wm::tree {
     enum HV {
         HORIZONTAL = true, VERTICAL = false
     };

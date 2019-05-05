@@ -2,7 +2,7 @@
 
 #include "wm.h"
 
-namespace project::helper {
+namespace wm::helper {
     const auto error = [](const char *const &fn) {
         std::cout << "ERROR on " << fn << '\n';
         throw std::exception();
@@ -23,15 +23,15 @@ namespace project::helper {
 
     const auto sendSocket = [](const in_port_t &port, const std::string &msg) {
         auto sock_server = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-        if (sock_server < 0) project::helper::error("socket");
+        if (sock_server < 0) wm::helper::error("socket");
         else {
             sockaddr_in sai_server{};
             bzero((char *) &sai_server, sizeof(sai_server));
             sai_server.sin_family = AF_INET;
             sai_server.sin_addr.s_addr = inet_addr(config::socket_host);
             sai_server.sin_port = htons(port);
-            if (connect(sock_server, (sockaddr *) &sai_server, sizeof(sai_server)) < 0) project::helper::error("connect");
-            else if (write(sock_server, msg.c_str(), msg.size()) < 0) project::helper::error("write");
+            if (connect(sock_server, (sockaddr *) &sai_server, sizeof(sai_server)) < 0) wm::helper::error("connect");
+            else if (write(sock_server, msg.c_str(), msg.size()) < 0) wm::helper::error("write");
             close(sock_server);
         }
     };

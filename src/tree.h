@@ -2,7 +2,7 @@
 
 #include "wm.h"
 
-namespace project::tree {
+namespace wm::tree {
     class PointerCoordinate {
         xcb_connection_t *const _x_connection;
         xcb_screen_t *const _x_default_screen;
