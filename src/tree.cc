@@ -60,9 +60,14 @@ namespace project::tree {
                                                 _root = _view = leaf;
                                             });
                                             leaf->_configure(
-                                                    {_root_hv, -config::border_width, -config::border_width,
-                                                     (uint16_t) (_root_width + config::border_width * 2),
-                                                     (uint16_t) (_root_height + config::border_width * 2)});
+                                                    {
+                                                            _root_hv,
+                                                            static_cast<int16_t>(-_border_width),
+                                                            static_cast<int16_t>(-_border_width),
+                                                            static_cast<uint16_t>(_root_width + _border_width * 2),
+                                                            static_cast<uint16_t>(_root_height + _border_width * 2)
+                                                    }
+                                            );
                                             leaf->_refresh();
                                         } else {
                                             if (_active == _view) {
@@ -159,20 +164,16 @@ namespace project::tree {
                                                                      int16_t values[] = {leaf->_attribute.y};
                                                                      values;
                                                                  }));
-                                        if (reply->width != leaf->_attribute.width - config::border_width * 2)
-                                            xcb_configure_window(_x_connection, leaf->_window,
-                                                                 XCB_CONFIG_WINDOW_WIDTH, ({
-                                                        uint16_t values[] = {(uint16_t) (leaf->_attribute.width -
-                                                                                         config::border_width * 2)};
-                                                        values;
-                                                    }));
-                                        if (reply->height != leaf->_attribute.height - config::border_width * 2)
-                                            xcb_configure_window(_x_connection, leaf->_window,
-                                                                 XCB_CONFIG_WINDOW_HEIGHT, ({
-                                                        uint16_t values[] = {(uint16_t) (leaf->_attribute.height -
-                                                                                         config::border_width * 2)};
-                                                        values;
-                                                    }));
+                                        if (reply->width != leaf->_attribute.width - _border_width * 2)
+                                            xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_WIDTH, ({
+                                                uint16_t values[] = {(uint16_t) (leaf->_attribute.width - _border_width * 2)};
+                                                values;
+                                            }));
+                                        if (reply->height != leaf->_attribute.height - _border_width * 2)
+                                            xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_HEIGHT, ({
+                                                uint16_t values[] = {(uint16_t) (leaf->_attribute.height - _border_width * 2)};
+                                                values;
+                                            }));
                                     }
 
                                     {
@@ -345,10 +346,23 @@ namespace project::tree {
 
     void Space::refresh() {
         static bool called = false;
+        static auto config_path = ({
+            std::stringstream ss;
+            ss << getenv(config::directory) << "/" << getenv(config::config_file);
+            ss.str().c_str();
+        });
 
-        _border_width = config::border_width;
-        _normal_pixel = _colorPixel(config::normal_color);
-        _focus_pixel = _colorPixel(config::focused_color);
+        {
+            std::stringstream ss;
+            std::ifstream ifs(config_path);
+            ss << ifs.rdbuf();
+            ifs.close();
+            using json=json::Json<>;
+            auto config = json::parse(ss.str()).as_object();
+            _border_width = static_cast<uint16_t>(config["border_width"].as_number());
+            _normal_pixel = _colorPixel(config["color"].as_object()["normal"].as_string());
+            _focused_pixel = _colorPixel(config["color"].as_object()["focused"].as_string());
+        }
 
         auto reply = xcb_get_geometry_reply(_x_connection, xcb_get_geometry(_x_connection, _x_default_screen->root), nullptr);
         _root_width = reply->width;
@@ -372,8 +386,8 @@ namespace project::tree {
                             _root_hv,
                             static_cast<int16_t>(-_border_width),
                             static_cast<int16_t>(-_border_width),
-                            static_cast<uint16_t>(_root_width + config::border_width * 2),
-                            static_cast<uint16_t>(_root_height + config::border_width * 2)
+                            static_cast<uint16_t>(_root_width + _border_width * 2),
+                            static_cast<uint16_t>(_root_height + _border_width * 2)
                     }
             );
             _view->_refresh();
@@ -663,15 +677,15 @@ namespace project::tree {
             if (!reply) helper::error("xcb_get_geometry_reply");
             _attribute.x = reply->x;
             _attribute.y = reply->y;
-            _attribute.width = (uint16_t) (reply->width + config::border_width * 2);
-            _attribute.height = (uint16_t) (reply->height + config::border_width * 2);
+            _attribute.width = (uint16_t) (reply->width + _space->_border_width * 2);
+            _attribute.height = (uint16_t) (reply->height + _space->_border_width * 2);
 
             xcb_configure_window(
                     _space->_x_connection,
                     window,
                     XCB_CONFIG_WINDOW_BORDER_WIDTH,
                     ({
-                        uint16_t values[] = {config::border_width};
+                        uint16_t values[] = {_space->_border_width};
                         values;
                     })
             );
@@ -691,8 +705,8 @@ namespace project::tree {
                     _window,
                     XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
                     ({
-                        int32_t values[] = {_attribute.x, _attribute.y, _attribute.width - config::border_width * 2,
-                                            _attribute.height - config::border_width * 2};
+                        int32_t values[] = {_attribute.x, _attribute.y, _attribute.width - _space->_border_width * 2,
+                                            _attribute.height - _space->_border_width * 2};
                         values;
                     })
             );
@@ -732,7 +746,7 @@ namespace project::tree {
         void Leaf::_focus(const bool &yes) {
             if (yes) {
                 xcb_change_window_attributes(_space->_x_connection, _window, XCB_CW_BORDER_PIXEL, ({
-                    uint32_t values[] = {_space->_focus_pixel};
+                    uint32_t values[] = {_space->_focused_pixel};
                     values;
                 }));
                 xcb_set_input_focus(_space->_x_connection, XCB_INPUT_FOCUS_PARENT, _window, XCB_CURRENT_TIME);
@@ -785,14 +799,14 @@ namespace project::tree {
         void Branch::_configureChildren() {
             switch (_attribute.hv) {
                 case HV::HORIZONTAL: {
-                    auto s = (int16_t) (_attribute.x + config::border_width);
-                    auto d = (uint16_t) ((_attribute.width - config::border_width * 2) / _children.size());
+                    auto s = (int16_t) (_attribute.x + _space->_border_width);
+                    auto d = (uint16_t) ((_attribute.width - _space->_border_width * 2) / _children.size());
                     for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
                         (*i++)->_configure(
                                 {
                                         HV(!_attribute.hv),
-                                        s, (int16_t) (_attribute.y + config::border_width),
-                                        d, (uint16_t) (_attribute.height - config::border_width * 2)
+                                        s, (int16_t) (_attribute.y + _space->_border_width),
+                                        d, (uint16_t) (_attribute.height - _space->_border_width * 2)
                                 }
                         );
                         s += d;
@@ -800,22 +814,22 @@ namespace project::tree {
                     (*std::prev(_children.cend()))->_configure(
                             {
                                     HV(!_attribute.hv),
-                                    s, (int16_t) (_attribute.y + config::border_width),
-                                    (uint16_t) (_attribute.x + _attribute.width - config::border_width - s),
-                                    (uint16_t) (_attribute.height - config::border_width * 2)
+                                    s, (int16_t) (_attribute.y + _space->_border_width),
+                                    (uint16_t) (_attribute.x + _attribute.width - _space->_border_width - s),
+                                    (uint16_t) (_attribute.height - _space->_border_width * 2)
                             }
                     );
                     break;
                 }
                 case HV::VERTICAL: {
-                    auto s = (int16_t) (_attribute.y + config::border_width);
-                    auto d = (uint16_t) ((_attribute.height - config::border_width * 2) / _children.size());
+                    auto s = (int16_t) (_attribute.y + _space->_border_width);
+                    auto d = (uint16_t) ((_attribute.height - _space->_border_width * 2) / _children.size());
                     for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
                         (*i++)->_configure(
                                 {
                                         HV(!_attribute.hv),
-                                        (int16_t) (_attribute.x + config::border_width), s,
-                                        (uint16_t) (_attribute.width - config::border_width * 2), d
+                                        (int16_t) (_attribute.x + _space->_border_width), s,
+                                        (uint16_t) (_attribute.width - _space->_border_width * 2), d
                                 }
                         );
                         s += d;
@@ -823,9 +837,9 @@ namespace project::tree {
                     (*std::prev(_children.cend()))->_configure(
                             {
                                     HV(!_attribute.hv),
-                                    (int16_t) (_attribute.x + config::border_width), s,
-                                    (uint16_t) (_attribute.width - config::border_width * 2),
-                                    (uint16_t) (_attribute.y + _attribute.height - config::border_width - s)
+                                    (int16_t) (_attribute.x + _space->_border_width), s,
+                                    (uint16_t) (_attribute.width - _space->_border_width * 2),
+                                    (uint16_t) (_attribute.y + _attribute.height - _space->_border_width - s)
                             }
                     );
                 }

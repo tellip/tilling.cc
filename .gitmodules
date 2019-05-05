@@ -1,3 +1,6 @@
 [submodule "src/regular.cc"]
 	path = src/regular.cc
 	url = git@github.com:tellip/regular.cc.git
+[submodule "src/json.cc"]
+	path = src/json.cc
+	url = git@github.com:tellip/json.cc.git

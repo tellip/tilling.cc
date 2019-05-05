@@ -28,7 +28,7 @@ namespace project::tree {
         const xcb_window_t _mask_layer;
 
         uint16_t _border_width;
-        uint32_t _normal_pixel, _focus_pixel;
+        uint32_t _normal_pixel, _focused_pixel;
         uint16_t _root_width, _root_height;
         HV _root_hv;
 

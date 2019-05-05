@@ -1,8 +1,6 @@
 #include "wm.h"
 #include "tree.cc"
 
-#include "regular.cc/regular.hh"
-
 int main(int argc, char **argv) {
     std::string
             arg = argv[0],

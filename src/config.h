@@ -8,6 +8,6 @@ namespace project::config {
     const auto socket_host = "127.0.0.1";
     const in_port_t socket_port_base = 2056;
 
-    const uint16_t border_width = 1;
-    const std::string normal_color = "black", focused_color = "green";
+//    const uint16_t border_width = 1;
+//    const std::string normal_color = "black", focused_color = "green";
 }

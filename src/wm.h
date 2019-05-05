@@ -1,8 +1,12 @@
 #pragma once
 
+#include "regular.cc/regular.hh"
+#include "json.cc/json.hh"
+
 #include <arpa/inet.h>
 #include <cmath>
 #include <cstring>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <list>
