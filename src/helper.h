@@ -8,14 +8,17 @@ namespace project::helper {
         throw std::exception();
     };
 
-    const in_port_t command_port = []() {
-        auto s = getenv("DISPLAY");
-        char fmt[99];
-        sprintf(fmt, ":%%%d%c", (int) sizeof(in_port_t) * 8, std::is_signed<in_port_t>::value ? 'd' : 'u');
-        in_port_t i;
-        if (!sscanf(s, fmt, &i)) error("environment variable \"DISPLAY\"");
-        return config::socket_port_base + i /*(in_port_t) (3 * i)*/;
-    }();
+    const auto command_port = []() {
+        static in_port_t value = ({
+            auto s = getenv("DISPLAY");
+            char fmt[99];
+            sprintf(fmt, ":%%%d%c", (int) sizeof(in_port_t) * 8, std::is_signed<in_port_t>::value ? 'd' : 'u');
+            in_port_t i;
+            if (!sscanf(s, fmt, &i)) error("environment variable \"DISPLAY\"");
+            config::socket_port_base + i /*(in_port_t) (3 * i)*/;
+        });
+        return value;
+    };
     /*const in_port_t command_helper_port = command_port + (in_port_t) 1, event_helper_port = command_port + (in_port_t) 2;*/
 
     const auto sendSocket = [](const in_port_t &port, const std::string &msg) {

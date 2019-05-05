@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
             {"client", [&]() {
                 for (auto i = 2; i < argc; ({
                     std::string arg = argv[i];
-                    if (arg.size() > 2 && arg.substr(0, 2) == "--" && arg[2] != '#') project::helper::sendSocket(project::helper::command_port, arg.substr(2));
+                    if (arg.size() > 2 && arg.substr(0, 2) == "--" && arg[2] != '#') project::helper::sendSocket(project::helper::command_port(), arg.substr(2));
                     i++;
                 }));
             }}

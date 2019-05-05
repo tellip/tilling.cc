@@ -213,7 +213,7 @@ namespace project::tree {
                                 auto i = _leaves.find(enter_notify->event);
                                 if (i != _leaves.end()) {
                                     auto leaf = i->second;
-                                    if (/*(!_manual_refreshing ? true : (_manual_refreshing = false)) &&*/ _active != leaf && !_pointer_coordinate.check()) {
+                                    if ((!_manual_refreshing ? true : (_manual_refreshing = false)) && _active != leaf && !_pointer_coordinate.check()) {
                                         for (Node *j = leaf; j->_parent; ({
                                             j->_parent->_iter_active = j->_parent_iter;
                                             j = j->_parent;
