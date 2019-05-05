@@ -38,6 +38,7 @@ namespace project::tree {
 
         PointerCoordinate _pointer_coordinate;
 
+        bool _manual_refreshing = false;
         bool _exiting;
     public:
         const server::EventHandlers event_handlers;
@@ -60,7 +61,7 @@ namespace project::tree {
         void _activate(Node *const &);
 
     public:
-        void refresh();
+        void refresh(const bool & = false);
 
         void exit();
 
@@ -185,7 +186,7 @@ namespace project::tree {
                 }},
 
                 {"refresh",          [&]() {
-                    space.refresh();
+                    space.refresh(true);
                 }},
 
                 {"focus-up",         [&]() {

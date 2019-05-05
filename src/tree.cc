@@ -37,8 +37,7 @@ namespace project::tree {
         });
     }
 
-    Space::Space(xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen,
-                 const std::function<void()> &break_) :
+    Space::Space(xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const std::function<void()> &break_) :
             _breakLoop(break_),
             _x_connection(x_connection),
             _x_default_screen(x_default_screen),
@@ -197,17 +196,15 @@ namespace project::tree {
                                         free(reply);
 
                                         if (low == _mask_layer && ancestor != _view)
-                                            xcb_configure_window(_x_connection, leaf->_window,
-                                                                 XCB_CONFIG_WINDOW_STACK_MODE, ({
-                                                        uint32_t values[] = {XCB_STACK_MODE_BELOW};
-                                                        values;
-                                                    }));
+                                            xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_STACK_MODE, ({
+                                                uint32_t values[] = {XCB_STACK_MODE_BELOW};
+                                                values;
+                                            }));
                                         else if (low == leaf->_window && ancestor == _view)
-                                            xcb_configure_window(_x_connection, leaf->_window,
-                                                                 XCB_CONFIG_WINDOW_STACK_MODE, ({
-                                                        uint32_t values[] = {XCB_STACK_MODE_ABOVE};
-                                                        values;
-                                                    }));
+                                            xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_STACK_MODE, ({
+                                                uint32_t values[] = {XCB_STACK_MODE_ABOVE};
+                                                values;
+                                            }));
                                     }
                                     xcb_flush(_x_connection);
                                 }
@@ -217,7 +214,7 @@ namespace project::tree {
                                 auto i = _leaves.find(enter_notify->event);
                                 if (i != _leaves.end()) {
                                     auto leaf = i->second;
-                                    if (_active != leaf && !_pointer_coordinate.check()) {
+                                    if ((!_manual_refreshing ? true : (_manual_refreshing = false)) && _active != leaf && !_pointer_coordinate.check()) {
                                         for (Node *j = leaf; j->_parent; ({
                                             j->_parent->_iter_active = j->_parent_iter;
                                             j = j->_parent;
@@ -236,8 +233,7 @@ namespace project::tree {
                                 if (i != _leaves.end()) {
                                     auto leaf = i->second;
                                     if (leaf != _active && _active) {
-                                        xcb_set_input_focus(_x_connection, XCB_INPUT_FOCUS_PARENT, _active->_window,
-                                                            XCB_CURRENT_TIME);
+                                        xcb_set_input_focus(_x_connection, XCB_INPUT_FOCUS_PARENT, _active->_window, XCB_CURRENT_TIME);
                                         xcb_flush(_x_connection);
                                     }
                                 }
@@ -245,14 +241,16 @@ namespace project::tree {
                     }
             ),
             _pointer_coordinate(x_connection, x_default_screen) {
-        xcb_create_window(x_connection,
-                          XCB_COPY_FROM_PARENT,
-                          _mask_layer,
-                          _x_default_screen->root,
-                          0, 0, 1, 1, 0,
-                          XCB_WINDOW_CLASS_INPUT_OUTPUT,
-                          _x_default_screen->root_visual,
-                          0, nullptr);
+        xcb_create_window(
+                x_connection,
+                XCB_COPY_FROM_PARENT,
+                _mask_layer,
+                _x_default_screen->root,
+                0, 0, 1, 1, 0,
+                XCB_WINDOW_CLASS_INPUT_OUTPUT,
+                _x_default_screen->root_visual,
+                0, nullptr
+        );
         xcb_map_window(_x_connection, _mask_layer);
         xcb_change_window_attributes(_x_connection, _mask_layer, XCB_CW_BACK_PIXEL, ({
             uint32_t values[] = {_normal_pixel};
@@ -269,8 +267,7 @@ namespace project::tree {
     }
 
     xcb_atom_t Space::_internAtom(const char *const &msg) {
-        auto reply = xcb_intern_atom_reply(_x_connection,
-                                           xcb_intern_atom(_x_connection, 0, (uint16_t) strlen(msg), msg), nullptr);
+        auto reply = xcb_intern_atom_reply(_x_connection, xcb_intern_atom(_x_connection, 0, (uint16_t) strlen(msg), msg), nullptr);
         if (!reply) helper::error("xcb_intern_atom_reply");
         auto atom = reply->atom;
         free(reply);
@@ -344,12 +341,14 @@ namespace project::tree {
         }));
     }
 
-    void Space::refresh() {
+    void Space::refresh(const bool &manual) {
+        if (manual) _manual_refreshing = true;
+
         static bool called = false;
-        static auto config_path = ({
+        static const auto config_path = ({
             std::stringstream ss;
             ss << getenv(config::directory) << "/" << getenv(config::config_file);
-            ss.str().c_str();
+            ss.str();
         });
 
         {
@@ -372,6 +371,7 @@ namespace project::tree {
             called = true;
             _root_hv = (HV) (_root_width >= _root_height);
         }
+
         xcb_configure_window(_x_connection, _mask_layer, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, ({
             uint16_t values[] = {_root_width, _root_height};
             values;
@@ -703,10 +703,9 @@ namespace project::tree {
             xcb_configure_window(
                     _space->_x_connection,
                     _window,
-                    XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+                    XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_BORDER_WIDTH,
                     ({
-                        int32_t values[] = {_attribute.x, _attribute.y, _attribute.width - _space->_border_width * 2,
-                                            _attribute.height - _space->_border_width * 2};
+                        int32_t values[] = {_attribute.x, _attribute.y, _attribute.width - _space->_border_width * 2, _attribute.height - _space->_border_width * 2, _space->_border_width};
                         values;
                     })
             );
