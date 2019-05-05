@@ -10,7 +10,12 @@ int main(int argc, char **argv) {
     });
 
     std::unordered_map<std::string, std::function<void()>> actions = {
-            {"help",   []() {}},
+            {"help",   [&]() {
+                std::cout << file << '\n'
+                          << "\t" << "help\n"
+                          << "\t" << "server\n"
+                          << "\t" << "client ...\n";
+            }},
             {"server", []() {
                 project::server::server([&](const auto &x_connection, const auto &x_default_screen, const auto &break_, const auto &loop, const auto &clean) {
                     project::tree::tree(x_connection, x_default_screen, break_, [&](const auto &command_handlers, const auto &root_event_mask, const auto &leaf_event_mask, const auto &event_handlers) {
@@ -37,7 +42,7 @@ int main(int argc, char **argv) {
             false;
         });
     }))
-        std::cout << "Arguments are invalid, try \"" + file + " help\".";
+        std::cout << "Arguments are invalid, try \"" + file + " help\".\n";
 
 
     return EXIT_SUCCESS;
