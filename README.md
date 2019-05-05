@@ -29,9 +29,8 @@ mkdir -p ~/.config/tree_wm
 nano ~/.config/tree_wm/rc           # refer to      *sample/rc*
 nano ~/.config/tree_wm/config.json  # refer to      *sample/config.json*
 nano ~/.xinitrc                     # add
-    # export TREE_WM_DIRECTORY="${HOME}/.config/tree_wm"
-    # export TREE_WM_CONFIG_FILE="config.json"
-    # ${TREE_WM_DIRECTORY}/rc &
+    # export TREE_WM_CONFIG_PATH="${HOME}/.config/tree_wm/config.json"
+    # ~/.config/tree_wm/rc &
     # exec tree_wm server
 startx
 ```

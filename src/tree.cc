@@ -341,11 +341,7 @@ namespace project::tree {
         if (manual) _manual_refreshing = true;
 
         static bool called = false;
-        static const auto config_path = ({
-            std::stringstream ss;
-            ss << getenv(config::directory) << "/" << getenv(config::config_file);
-            ss.str();
-        });
+        static const auto config_path = getenv(config::config_path_evn);
 
         {
             std::stringstream ss;
