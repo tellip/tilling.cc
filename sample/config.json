@@ -1,0 +1,7 @@
+{
+  "border_width": 1,
+  "color": {
+    "normal": "black",
+    "focused": "green"
+  }
+}
