@@ -24,8 +24,8 @@ cmake .
 make
 cp tree_wm ~/bin # make sure '~/bin' is in environment variable 'PATH'
 
-nano ~/.config/sxhkdrc              # refer to      *sample/sxhkdrc*
-nano ~/.config/tree_wm/tree_wm_rc    # refer to      *sample/tree_wm_rc*
-nano ~/.xinitrc                     # add           '~/.config/tree_wm/tree_wm_rc &' and 'exec tree_wm server'
+nano ~/.config/sxhkdrc       # refer to      *sample/sxhkdrc*
+nano ~/.config/tree_wm/rc    # refer to      *sample/rc*
+nano ~/.xinitrc              # add           '~/.config/tree_wm/rc &' and 'exec tree_wm server'
 startx
 ```
