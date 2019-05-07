@@ -20,31 +20,45 @@
 #include <vector>
 #include <xcb/xcb.h>
 
-namespace wm::tree {
-    enum HV {
-        HORIZONTAL = true, VERTICAL = false
-    };
+namespace wm {
+    namespace server {
+        using EventHandler=std::function<void(xcb_generic_event_t *const &)>;
+        using EventHandlers=std::unordered_map<
+                int,
+                EventHandler
+        >;
+        using CommandHandler=std::function<void()>;
+        using CommandHandlers=std::unordered_map<
+                std::string,
+                CommandHandler
+        >;
+    }
+    namespace tree {
+        enum HV {
+            HORIZONTAL = true, VERTICAL = false
+        };
 
-    enum FB {
-        FORWARD = true, BACKWARD = false
-    };
+        enum FB {
+            FORWARD = true, BACKWARD = false
+        };
 
-    class PointerCoordinate;
+        class PointerCoordinate;
 
-    class Space;
+        class Space;
 
-    struct Attribute;
+        struct Attribute;
 
-    class Node;
+        class Node;
 
-    namespace node {
-        class Branch;
+        namespace node {
+            class Branch;
 
-        class Leaf;
+            class Leaf;
+        }
     }
 }
 
+#include "tree.h"
 #include "config.h"
 #include "helper.h"
 #include "server.hh"
-#include "tree.h"

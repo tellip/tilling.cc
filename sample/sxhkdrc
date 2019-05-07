@@ -14,23 +14,23 @@ super + l
 	slock
 
 super + shift + e
-	tree_wm client --exit
+	tree_wm client exit
 super + F5
-	tree_wm client --refresh
+	tree_wm client refresh
 super + {_,shift +,alt +,ctrl +} {Up,Right,Down,Left}
-	tree_wm client --{focus,reorder,reparent,reorganize}-{up,right,down,left}
+	tree_wm client {focus,reorder,reparent,reorganize}-{up,right,down,left}
 super + {Escape,grave}
-	tree_wm client --view-{out,in}
+	tree_wm client view-{out,in}
 super + {f,a}
-	tree_wm client --view-{leaf,root}
+	tree_wm client view-{leaf,root}
 alt + {shift + Tab,Tab}
-	tree_wm client --view-{backward,forward}
+	tree_wm client view-{backward,forward}
 super + Page_{Up,Down}
-	tree_wm client --view-{backward,forward}
+	tree_wm client view-{backward,forward}
 super + space
-	tree_wm client --transpose
+	tree_wm client transpose
 super + shift + {q,k}
-	tree_wm client --{close,kill}-window
+	tree_wm client {close,kill}-window
 
 @XF86LaunchA
 	scrot -se 'xclip -selection clipboard -t image/png -i $f && mv $f ~/.cache/SCREEN_SHOT.png'

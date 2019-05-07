@@ -27,11 +27,7 @@ int main(int argc, char **argv) {
                 });
             }},
             {"client", [&]() {
-                for (auto i = 2; i < argc; ({
-                    std::string arg = argv[i];
-                    if (arg.size() > 2 && arg.substr(0, 2) == "--" && arg[2] != '#') wm::helper::sendSocket(wm::helper::command_port(), arg.substr(2));
-                    i++;
-                }));
+                for (auto i = 2; i < argc; wm::helper::sendSocket(wm::helper::command_port(), argv[i++]));
             }}
     };
 

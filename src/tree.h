@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wm.h"
+#include "config.h"
 
 namespace wm::tree {
     class PointerCoordinate {
@@ -178,100 +179,14 @@ namespace wm::tree {
     const uint32_t root_event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
     const uint32_t leaf_event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE;
 
-    auto tree = [](xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const auto &breakLoop, const auto &callback) {
+    const auto tree = [](xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const auto &breakLoop, const auto &callback) {
         auto space = Space(x_connection, x_default_screen, breakLoop);
         space.refresh();
-        server::CommandHandlers command_handlers = {
-                {"exit",             [&]() {
-                    space.exit();
-                }},
-
-                {"refresh",          [&]() {
-                    space.refresh(true);
-                }},
-
-                {"focus-up",         [&]() {
-                    space.focus(HV::VERTICAL, FB::BACKWARD);
-                }},
-                {"focus-right",      [&]() {
-                    space.focus(HV::HORIZONTAL, FB::FORWARD);
-                }},
-                {"focus-down",       [&]() {
-                    space.focus(HV::VERTICAL, FB::FORWARD);
-                }},
-                {"focus-left",       [&]() {
-                    space.focus(HV::HORIZONTAL, FB::BACKWARD);
-                }},
-
-                {"reorder-up",       [&]() {
-                    space.reorder(HV::VERTICAL, FB::BACKWARD);
-                }},
-                {"reorder-right",    [&]() {
-                    space.reorder(HV::HORIZONTAL, FB::FORWARD);
-                }},
-                {"reorder-down",     [&]() {
-                    space.reorder(HV::VERTICAL, FB::FORWARD);
-                }},
-                {"reorder-left",     [&]() {
-                    space.reorder(HV::HORIZONTAL, FB::BACKWARD);
-                }},
-
-                {"reparent-up",      [&]() {
-                    space.reparent(HV::VERTICAL, FB::BACKWARD);
-                }},
-                {"reparent-right",   [&]() {
-                    space.reparent(HV::HORIZONTAL, FB::FORWARD);
-                }},
-                {"reparent-down",    [&]() {
-                    space.reparent(HV::VERTICAL, FB::FORWARD);
-                }},
-                {"reparent-left",    [&]() {
-                    space.reparent(HV::HORIZONTAL, FB::BACKWARD);
-                }},
-
-                {"reorganize-up",    [&]() {
-                    space.reorganize(HV::VERTICAL, FB::BACKWARD);
-                }},
-                {"reorganize-right", [&]() {
-                    space.reorganize(HV::HORIZONTAL, FB::FORWARD);
-                }},
-                {"reorganize-down",  [&]() {
-                    space.reorganize(HV::VERTICAL, FB::FORWARD);
-                }},
-                {"reorganize-left",  [&]() {
-                    space.reorganize(HV::HORIZONTAL, FB::BACKWARD);
-                }},
-
-                {"view-in",          [&]() {
-                    space.viewResize(FB::FORWARD);
-                }},
-                {"view-out",         [&]() {
-                    space.viewResize(FB::BACKWARD);
-                }},
-                {"view-leaf",        [&]() {
-                    space.viewExtreme(FB::FORWARD);
-                }},
-                {"view-root",        [&]() {
-                    space.viewExtreme(FB::BACKWARD);
-                }},
-                {"view-forward",     [&]() {
-                    space.viewMove(FB::FORWARD);
-                }},
-                {"view-backward",    [&]() {
-                    space.viewMove(FB::BACKWARD);
-                }},
-
-                {"transpose",        [&]() {
-                    space.transpose();
-                }},
-
-                {"close-window",     [&]() {
-                    space.closeActive(false);
-                }},
-                {"kill-window",      [&]() {
-                    space.closeActive(true);
-                }}
-        };
+        server::CommandHandlers command_handlers;
+//        for (auto i = config::command_handlers.cbegin(); i != config::command_handlers.cend(); ({
+//            command_handlers[i->first] = [&]() { i->second(space); };
+//            i++;
+//        }));
         callback(
                 command_handlers,
                 root_event_mask,
