@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 
     std::unordered_map<std::string, std::function<void()>> actions = {
             {"help",   [&]() {
-                std::cout << file << '\n'
+                std::cout << file << " ...\n"
                           << "\t" << "help\n"
                           << "\t" << "server\n"
                           << "\t" << "client ...\n";
