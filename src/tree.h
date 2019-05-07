@@ -1,7 +1,6 @@
 #pragma once
 
 #include "wm.h"
-#include "config.h"
 
 namespace wm::tree {
     class PointerCoordinate {
@@ -178,15 +177,106 @@ namespace wm::tree {
 
     const uint32_t root_event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
     const uint32_t leaf_event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE;
+    const std::unordered_map<std::string, std::function<void(tree::Space & )>> command_handler_map = {
+            {"exit",             [](tree::Space &space) {
+                space.exit();
+            }},
+
+            {"refresh",          [](tree::Space &space) {
+                space.refresh(true);
+            }},
+
+            {"focus-up",         [](tree::Space &space) {
+                space.focus(tree::HV::VERTICAL, tree::FB::BACKWARD);
+            }},
+            {"focus-right",      [](tree::Space &space) {
+                space.focus(tree::HV::HORIZONTAL, tree::FB::FORWARD);
+            }},
+            {"focus-down",       [](tree::Space &space) {
+                space.focus(tree::HV::VERTICAL, tree::FB::FORWARD);
+            }},
+            {"focus-left",       [](tree::Space &space) {
+                space.focus(tree::HV::HORIZONTAL, tree::FB::BACKWARD);
+            }},
+
+            {"reorder-up",       [](tree::Space &space) {
+                space.reorder(tree::HV::VERTICAL, tree::FB::BACKWARD);
+            }},
+            {"reorder-right",    [](tree::Space &space) {
+                space.reorder(tree::HV::HORIZONTAL, tree::FB::FORWARD);
+            }},
+            {"reorder-down",     [](tree::Space &space) {
+                space.reorder(tree::HV::VERTICAL, tree::FB::FORWARD);
+            }},
+            {"reorder-left",     [](tree::Space &space) {
+                space.reorder(tree::HV::HORIZONTAL, tree::FB::BACKWARD);
+            }},
+
+            {"reparent-up",      [](tree::Space &space) {
+                space.reparent(tree::HV::VERTICAL, tree::FB::BACKWARD);
+            }},
+            {"reparent-right",   [](tree::Space &space) {
+                space.reparent(tree::HV::HORIZONTAL, tree::FB::FORWARD);
+            }},
+            {"reparent-down",    [](tree::Space &space) {
+                space.reparent(tree::HV::VERTICAL, tree::FB::FORWARD);
+            }},
+            {"reparent-left",    [](tree::Space &space) {
+                space.reparent(tree::HV::HORIZONTAL, tree::FB::BACKWARD);
+            }},
+
+            {"reorganize-up",    [](tree::Space &space) {
+                space.reorganize(tree::HV::VERTICAL, tree::FB::BACKWARD);
+            }},
+            {"reorganize-right", [](tree::Space &space) {
+                space.reorganize(tree::HV::HORIZONTAL, tree::FB::FORWARD);
+            }},
+            {"reorganize-down",  [](tree::Space &space) {
+                space.reorganize(tree::HV::VERTICAL, tree::FB::FORWARD);
+            }},
+            {"reorganize-left",  [](tree::Space &space) {
+                space.reorganize(tree::HV::HORIZONTAL, tree::FB::BACKWARD);
+            }},
+
+            {"view-in",          [](tree::Space &space) {
+                space.viewResize(tree::FB::FORWARD);
+            }},
+            {"view-out",         [](tree::Space &space) {
+                space.viewResize(tree::FB::BACKWARD);
+            }},
+            {"view-leaf",        [](tree::Space &space) {
+                space.viewExtreme(tree::FB::FORWARD);
+            }},
+            {"view-root",        [](tree::Space &space) {
+                space.viewExtreme(tree::FB::BACKWARD);
+            }},
+            {"view-forward",     [](tree::Space &space) {
+                space.viewMove(tree::FB::FORWARD);
+            }},
+            {"view-backward",    [](tree::Space &space) {
+                space.viewMove(tree::FB::BACKWARD);
+            }},
+
+            {"transpose",        [](tree::Space &space) {
+                space.transpose();
+            }},
+
+            {"close-window",     [](tree::Space &space) {
+                space.closeActive(false);
+            }},
+            {"kill-window",      [](tree::Space &space) {
+                space.closeActive(true);
+            }}
+    };
 
     const auto tree = [](xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const auto &breakLoop, const auto &callback) {
         auto space = Space(x_connection, x_default_screen, breakLoop);
         space.refresh();
         server::CommandHandlers command_handlers;
-//        for (auto i = config::command_handlers.cbegin(); i != config::command_handlers.cend(); ({
-//            command_handlers[i->first] = [&]() { i->second(space); };
-//            i++;
-//        }));
+        for (auto i = command_handler_map.cbegin(); i != command_handler_map.cend(); ({
+            command_handlers[i->first] = [&]() { i->second(space); };
+            i++;
+        }));
         callback(
                 command_handlers,
                 root_event_mask,

@@ -15,6 +15,10 @@ int main(int argc, char **argv) {
                           << "\t" << "help\n"
                           << "\t" << "server\n"
                           << "\t" << "client ...\n";
+                std::list<std::string> command_list;
+                for (auto i = wm::tree::command_handler_map.cbegin(); i != wm::tree::command_handler_map.cend(); command_list.emplace_back((i++)->first));
+                command_list.sort();
+                for (auto i = command_list.cbegin(); i != command_list.cend(); std::cout << "\t\t" << *(i++) << "\n");
             }},
             {"server", []() {
                 wm::server::server([&](const auto &x_connection, const auto &x_default_screen, const auto &break_, const auto &loop, const auto &clean) {

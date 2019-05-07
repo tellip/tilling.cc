@@ -58,7 +58,7 @@ namespace wm {
     }
 }
 
-#include "tree.h"
 #include "config.h"
 #include "helper.h"
 #include "server.hh"
+#include "tree.h"
