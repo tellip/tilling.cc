@@ -22,16 +22,19 @@
 
 namespace wm {
     namespace server {
+        template<typename>
+        struct Handler;
+
         using EventHandler=std::function<void(xcb_generic_event_t *const &)>;
         using EventHandlers=std::unordered_map<
                 int,
                 EventHandler
         >;
-        using CommandHandler=std::function<void()>;
-        using CommandHandlers=std::unordered_map<
-                std::string,
-                CommandHandler
-        >;
+//        using CommandHandler=std::function<void()>;
+//        using CommandHandlers=std::unordered_map<
+//                std::string,
+//                CommandHandler
+//        >;
     }
     namespace tree {
         enum HV {

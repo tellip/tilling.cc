@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
                           << "\t" << "server\n"
                           << "\t" << "client ...\n";
                 std::list<std::string> command_list;
-                for (auto i = wm::tree::command_handler_map.cbegin(); i != wm::tree::command_handler_map.cend(); command_list.emplace_back((i++)->first));
+                for (auto i = wm::tree::command_handlers.cbegin(); i != wm::tree::command_handlers.cend(); command_list.emplace_back((i++)->first));
                 command_list.sort();
                 for (auto i = command_list.cbegin(); i != command_list.cend(); std::cout << "\t\t" << *(i++) << "\n");
             }},

@@ -177,7 +177,7 @@ namespace wm::tree {
 
     const uint32_t root_event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
     const uint32_t leaf_event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE;
-    const std::unordered_map<std::string, std::function<void(tree::Space & )>> command_handler_map = {
+    const std::unordered_map<std::string, std::function<void(tree::Space &)>> command_handlers = {
             {"exit",             [](tree::Space &space) {
                 space.exit();
             }},
@@ -269,16 +269,22 @@ namespace wm::tree {
             }}
     };
 
+    struct CommandHandler : server::Handler<std::string> {
+        Space &space;
+
+        explicit CommandHandler(Space &space) : space(space) {}
+
+        void handle(const std::string &task) const final {
+            auto i = command_handlers.find(task);
+            if (i != command_handlers.cend()) i->second(space);
+        };
+    };
+
     const auto tree = [](xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const auto &breakLoop, const auto &callback) {
         auto space = Space(x_connection, x_default_screen, breakLoop);
         space.refresh();
-        server::CommandHandlers command_handlers;
-        for (auto i = command_handler_map.cbegin(); i != command_handler_map.cend(); ({
-            command_handlers[i->first] = [&]() { i->second(space); };
-            i++;
-        }));
         callback(
-                command_handlers,
+                CommandHandler(space),
                 root_event_mask,
                 leaf_event_mask,
                 space.event_handlers

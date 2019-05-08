@@ -3,6 +3,11 @@
 #include "wm.h"
 
 namespace wm::server {
+    template<typename Task>
+    struct Handler {
+        virtual void handle(const Task &) const = 0;
+    };
+
     const auto server = [](const auto &callback) {
         sockaddr_in sai_command{}/*, sai_command_helper, sai_event_helper*/;
         auto sock_command = helper::createSocket(helper::command_port(), sai_command)/*, sock_command_helper = createSocket(command_helper_port, sai_command_helper), sock_event_helper = createSocket(event_helper_port, sai_event_helper)*/;
@@ -36,8 +41,8 @@ namespace wm::server {
                     }
                 },
                 //loop
-                [&](const CommandHandlers &command_handlers, const uint32_t &root_event_mask, const uint32_t &leaf_event_mask, const EventHandlers &event_handlers, const auto &callback) {
-                    std::queue<CommandHandler> command_tasks;
+                [&](const Handler<std::string> &command_handler, const uint32_t &root_event_mask, const uint32_t &leaf_event_mask, const EventHandlers &event_handlers, const auto &callback) {
+                    std::queue<std::string> command_tasks;
                     /*bool handling_command = false, command_waiting = false, handling_event = false, event_waiting = false;*/
                     if (!looping) {
                         looping = true;
@@ -46,15 +51,12 @@ namespace wm::server {
                             while (looping) {
                                 char buffer[256];
                                 helper::acceptSocket(sock_command, buffer, 256);
-                                auto i = command_handlers.find(buffer);
-                                if (i != command_handlers.end()) {
-                                    command_tasks.push(i->second);
+                                command_tasks.push(buffer);
 
-                                    auto event = new xcb_generic_event_t();
-                                    xcb_send_event(x_connection, 0, x_default_screen->root, XCB_EVENT_MASK_NO_EVENT, (const char *) event);
-                                    xcb_flush(x_connection);
-                                    delete event;
-                                }
+                                auto event = new xcb_generic_event_t();
+                                xcb_send_event(x_connection, 0, x_default_screen->root, XCB_EVENT_MASK_NO_EVENT, (const char *) event);
+                                xcb_flush(x_connection);
+                                delete event;
                             }
                         });
 
@@ -76,7 +78,7 @@ namespace wm::server {
                                     }
                                 } while ((event = xcb_poll_for_event(x_connection)));
                                 while (!command_tasks.empty()) {
-                                    command_tasks.front()();
+                                    command_handler.handle(command_tasks.front());
                                     command_tasks.pop();
                                 }
                             }
