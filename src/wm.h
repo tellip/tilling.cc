@@ -24,12 +24,6 @@ namespace wm {
     namespace server {
         template<typename>
         struct Handler;
-
-//        using EventHandler=std::function<void(xcb_generic_event_t *const &)>;
-//        using EventHandlers=std::unordered_map<
-//                int,
-//                EventHandler
-//        >;
     }
     namespace tree {
         enum HV {
