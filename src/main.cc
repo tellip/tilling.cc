@@ -25,9 +25,9 @@ int main(int argc, char **argv) {
                     wm::tree::tree(x_connection, x_default_screen, break_, [&](const auto &command_handler, const auto &root_event_mask, const auto &leaf_event_mask, const auto &event_handler) {
                         loop(command_handler, root_event_mask, leaf_event_mask, event_handler, [&](const auto &join) {
                             join();
-                            clean();
                         });
                     });
+                    clean();
                 });
             }},
             {"client", [&]() {
