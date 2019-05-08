@@ -41,7 +41,10 @@ namespace wm::tree {
         bool _manual_refreshing;
         bool _exiting;
     public:
-        const server::EventHandlers event_handlers;
+        const std::unordered_map<
+                int,
+                std::function<void(xcb_generic_event_t *const &)>
+        > event_handlers;
 
         Space(xcb_connection_t *const &, xcb_screen_t *const &, const std::function<void()> &);
 
@@ -274,10 +277,21 @@ namespace wm::tree {
 
         explicit CommandHandler(Space &space) : space(space) {}
 
-        void handle(const std::string &task) const final {
+        inline void handle(const std::string &task) const final {
             auto i = command_handlers.find(task);
             if (i != command_handlers.cend()) i->second(space);
         };
+    };
+
+    struct EventHandler : server::Handler<xcb_generic_event_t *> {
+        Space &space;
+
+        explicit EventHandler(Space &space) : space(space) {}
+
+        inline void handle(xcb_generic_event_t *const &event) const final {
+            auto i = space.event_handlers.find(event->response_type & ~0x80);
+            if (i != space.event_handlers.cend()) i->second(event);
+        }
     };
 
     const auto tree = [](xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const auto &breakLoop, const auto &callback) {
@@ -287,7 +301,7 @@ namespace wm::tree {
                 CommandHandler(space),
                 root_event_mask,
                 leaf_event_mask,
-                space.event_handlers
+                EventHandler(space)
         );
     };
 }

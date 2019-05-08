@@ -25,15 +25,10 @@ namespace wm {
         template<typename>
         struct Handler;
 
-        using EventHandler=std::function<void(xcb_generic_event_t *const &)>;
-        using EventHandlers=std::unordered_map<
-                int,
-                EventHandler
-        >;
-//        using CommandHandler=std::function<void()>;
-//        using CommandHandlers=std::unordered_map<
-//                std::string,
-//                CommandHandler
+//        using EventHandler=std::function<void(xcb_generic_event_t *const &)>;
+//        using EventHandlers=std::unordered_map<
+//                int,
+//                EventHandler
 //        >;
     }
     namespace tree {
@@ -58,6 +53,9 @@ namespace wm {
 
             class Leaf;
         }
+
+        struct CommandHandler;
+        struct EventHandler;
     }
 }
 

@@ -22,8 +22,8 @@ int main(int argc, char **argv) {
             }},
             {"server", []() {
                 wm::server::server([&](const auto &x_connection, const auto &x_default_screen, const auto &break_, const auto &loop, const auto &clean) {
-                    wm::tree::tree(x_connection, x_default_screen, break_, [&](const auto &command_handlers, const auto &root_event_mask, const auto &leaf_event_mask, const auto &event_handlers) {
-                        loop(command_handlers, root_event_mask, leaf_event_mask, event_handlers, [&](const auto &join) {
+                    wm::tree::tree(x_connection, x_default_screen, break_, [&](const auto &command_handler, const auto &root_event_mask, const auto &leaf_event_mask, const auto &event_handler) {
+                        loop(command_handler, root_event_mask, leaf_event_mask, event_handler, [&](const auto &join) {
                             join();
                             clean();
                         });

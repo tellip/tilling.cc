@@ -41,7 +41,7 @@ namespace wm::server {
                     }
                 },
                 //loop
-                [&](const Handler<std::string> &command_handler, const uint32_t &root_event_mask, const uint32_t &leaf_event_mask, const EventHandlers &event_handlers, const auto &callback) {
+                [&](const Handler<std::string> &command_handler, const uint32_t &root_event_mask, const uint32_t &leaf_event_mask, const Handler<xcb_generic_event_t *> &event_handler, const auto &callback) {
                     std::queue<std::string> command_tasks;
                     /*bool handling_command = false, command_waiting = false, handling_event = false, event_waiting = false;*/
                     if (!looping) {
@@ -71,9 +71,8 @@ namespace wm::server {
                                 auto event = xcb_wait_for_event(x_connection);
                                 do {
                                     if (event) {
-                                        auto type = event->response_type & ~0x80;
-                                        auto i = event_handlers.find(type);
-                                        if (i != event_handlers.end()) i->second(event);
+//                                        auto type = event->response_type & ~0x80;
+                                        event_handler.handle(event);
                                         free(event);
                                     }
                                 } while ((event = xcb_poll_for_event(x_connection)));
