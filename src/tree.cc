@@ -50,7 +50,7 @@ namespace wm::tree {
                                 auto map_notify = (xcb_map_notify_event_t *) event;
                                 if (!map_notify->override_redirect) {
                                     if (map_notify->window != _mask_layer && _leaves.find(map_notify->window) == _leaves.end()) {
-                                        auto leaf = new node::Leaf(this, map_notify->window);
+                                        auto leaf = new node::Leaf(*this, map_notify->window);
 
                                         std::list<std::function<void()>> fl;
                                         if (!_active) {
@@ -654,7 +654,7 @@ namespace wm::tree {
         } else if (_exiting) _breakLoop();
     }
 
-    Node::Node(Space *const &space) : _space(space) {
+    Node::Node(Space &space) : _space(space) {
         _parent = nullptr;
     }
 
@@ -665,45 +665,45 @@ namespace wm::tree {
     }
 
     namespace node {
-        Leaf::Leaf(Space *const &space, const xcb_window_t &window) :
+        Leaf::Leaf(Space &space, const xcb_window_t &window) :
                 Node(space),
                 _window(window),
-                _leaves_iter(space->_leaves.insert(std::make_pair(window, this)).first) {
+                _leaves_iter(space._leaves.insert(std::make_pair(window, this)).first) {
             _focused = false;
-            auto reply = xcb_get_geometry_reply(_space->_x_connection,
-                                                xcb_get_geometry(_space->_x_connection, _window), nullptr);
+            auto reply = xcb_get_geometry_reply(_space._x_connection,
+                                                xcb_get_geometry(_space._x_connection, _window), nullptr);
             if (!reply) helper::error("xcb_get_geometry_reply");
             _attribute.x = reply->x;
             _attribute.y = reply->y;
-            _attribute.width = (uint16_t) (reply->width + _space->_border_width * 2);
-            _attribute.height = (uint16_t) (reply->height + _space->_border_width * 2);
+            _attribute.width = (uint16_t) (reply->width + _space._border_width * 2);
+            _attribute.height = (uint16_t) (reply->height + _space._border_width * 2);
 
             xcb_configure_window(
-                    _space->_x_connection,
+                    _space._x_connection,
                     window,
                     XCB_CONFIG_WINDOW_BORDER_WIDTH,
                     ({
-                        uint16_t values[] = {_space->_border_width};
+                        uint16_t values[] = {_space._border_width};
                         values;
                     })
             );
-            xcb_change_window_attributes(space->_x_connection, window, XCB_CW_EVENT_MASK, ({
+            xcb_change_window_attributes(space._x_connection, window, XCB_CW_EVENT_MASK, ({
                 uint32_t values[] = {leaf_event_mask};
                 values;
             }));
         }
 
         Leaf::~Leaf() {
-            _space->_leaves.erase(_leaves_iter);
+            _space._leaves.erase(_leaves_iter);
         }
 
         void Leaf::_refresh() {
             xcb_configure_window(
-                    _space->_x_connection,
+                    _space._x_connection,
                     _window,
                     XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_BORDER_WIDTH,
                     ({
-                        int32_t values[] = {_attribute.x, _attribute.y, _attribute.width - _space->_border_width * 2, _attribute.height - _space->_border_width * 2, _space->_border_width};
+                        int32_t values[] = {_attribute.x, _attribute.y, _attribute.width - _space._border_width * 2, _attribute.height - _space._border_width * 2, _space._border_width};
                         values;
                     })
             );
@@ -711,7 +711,7 @@ namespace wm::tree {
         }
 
         void Leaf::_raise() {
-            xcb_configure_window(_space->_x_connection, _window, XCB_CONFIG_WINDOW_STACK_MODE, ({
+            xcb_configure_window(_space._x_connection, _window, XCB_CONFIG_WINDOW_STACK_MODE, ({
                 uint32_t values[] = {XCB_STACK_MODE_ABOVE};
                 values;
             }));
@@ -744,19 +744,19 @@ namespace wm::tree {
         void Leaf::_focus(const bool &focused) {
             _focused = focused;
             if (focused) {
-                xcb_change_window_attributes(_space->_x_connection, _window, XCB_CW_BORDER_PIXEL, ({
-                    uint32_t values[] = {_space->_focused_pixel};
+                xcb_change_window_attributes(_space._x_connection, _window, XCB_CW_BORDER_PIXEL, ({
+                    uint32_t values[] = {_space._focused_pixel};
                     values;
                 }));
-                xcb_set_input_focus(_space->_x_connection, XCB_INPUT_FOCUS_PARENT, _window, XCB_CURRENT_TIME);
+                xcb_set_input_focus(_space._x_connection, XCB_INPUT_FOCUS_PARENT, _window, XCB_CURRENT_TIME);
             } else
-                xcb_change_window_attributes(_space->_x_connection, _window, XCB_CW_BORDER_PIXEL, ({
-                    uint32_t values[] = {_space->_normal_pixel};
+                xcb_change_window_attributes(_space._x_connection, _window, XCB_CW_BORDER_PIXEL, ({
+                    uint32_t values[] = {_space._normal_pixel};
                     values;
                 }));
         }
 
-        Branch::Branch(Space *const &space) : Node(space) {}
+        Branch::Branch(Space &space) : Node(space) {}
 
         Branch::~Branch() {
             for (auto i = _children.cbegin(); i != _children.cend(); delete *i++);
@@ -798,14 +798,14 @@ namespace wm::tree {
         void Branch::_configureChildren() {
             switch (_attribute.hv) {
                 case HV::HORIZONTAL: {
-                    auto s = (int16_t) (_attribute.x + _space->_border_width);
-                    auto d = (uint16_t) ((_attribute.width - _space->_border_width * 2) / _children.size());
+                    auto s = (int16_t) (_attribute.x + _space._border_width);
+                    auto d = (uint16_t) ((_attribute.width - _space._border_width * 2) / _children.size());
                     for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
                         (*i++)->_configure(
                                 {
                                         HV(!_attribute.hv),
-                                        s, (int16_t) (_attribute.y + _space->_border_width),
-                                        d, (uint16_t) (_attribute.height - _space->_border_width * 2)
+                                        s, (int16_t) (_attribute.y + _space._border_width),
+                                        d, (uint16_t) (_attribute.height - _space._border_width * 2)
                                 }
                         );
                         s += d;
@@ -813,22 +813,22 @@ namespace wm::tree {
                     (*std::prev(_children.cend()))->_configure(
                             {
                                     HV(!_attribute.hv),
-                                    s, (int16_t) (_attribute.y + _space->_border_width),
-                                    (uint16_t) (_attribute.x + _attribute.width - _space->_border_width - s),
-                                    (uint16_t) (_attribute.height - _space->_border_width * 2)
+                                    s, (int16_t) (_attribute.y + _space._border_width),
+                                    (uint16_t) (_attribute.x + _attribute.width - _space._border_width - s),
+                                    (uint16_t) (_attribute.height - _space._border_width * 2)
                             }
                     );
                     break;
                 }
                 case HV::VERTICAL: {
-                    auto s = (int16_t) (_attribute.y + _space->_border_width);
-                    auto d = (uint16_t) ((_attribute.height - _space->_border_width * 2) / _children.size());
+                    auto s = (int16_t) (_attribute.y + _space._border_width);
+                    auto d = (uint16_t) ((_attribute.height - _space._border_width * 2) / _children.size());
                     for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
                         (*i++)->_configure(
                                 {
                                         HV(!_attribute.hv),
-                                        (int16_t) (_attribute.x + _space->_border_width), s,
-                                        (uint16_t) (_attribute.width - _space->_border_width * 2), d
+                                        (int16_t) (_attribute.x + _space._border_width), s,
+                                        (uint16_t) (_attribute.width - _space._border_width * 2), d
                                 }
                         );
                         s += d;
@@ -836,9 +836,9 @@ namespace wm::tree {
                     (*std::prev(_children.cend()))->_configure(
                             {
                                     HV(!_attribute.hv),
-                                    (int16_t) (_attribute.x + _space->_border_width), s,
-                                    (uint16_t) (_attribute.width - _space->_border_width * 2),
-                                    (uint16_t) (_attribute.y + _attribute.height - _space->_border_width - s)
+                                    (int16_t) (_attribute.x + _space._border_width), s,
+                                    (uint16_t) (_attribute.width - _space._border_width * 2),
+                                    (uint16_t) (_attribute.y + _attribute.height - _space._border_width - s)
                             }
                     );
                 }

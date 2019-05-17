@@ -98,14 +98,14 @@ namespace wm::tree {
     };
 
     class Node {
-        Space *const _space;
+        Space &_space;
 
         node::Branch *_parent;
 
         std::list<Node *>::iterator _parent_iter;
         Attribute _attribute;
 
-        explicit Node(Space *const &);
+        explicit Node(Space &);
 
         virtual ~Node() = 0;
 
@@ -132,7 +132,7 @@ namespace wm::tree {
             const std::unordered_map<xcb_window_t, Leaf *>::iterator _leaves_iter;
             bool _focused;
 
-            Leaf(Space *const &, const xcb_window_t &);
+            Leaf(Space &, const xcb_window_t &);
 
             ~Leaf() final;
 
@@ -155,7 +155,7 @@ namespace wm::tree {
             std::list<Node *> _children;
             std::list<Node *>::iterator _iter_active;
 
-            explicit Branch(Space *const &);
+            explicit Branch(Space &);
 
             ~Branch() final;
 
