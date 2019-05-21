@@ -113,18 +113,16 @@ namespace wm::tree {
                                     }
                                     Node *rest;
                                     std::list<std::function<void()>> fl;
-                                    if (leaf == _view ||
-                                        (leaf->_parent == _view && leaf->_parent->_children.size() <= 2)) {
+                                    if (_view == leaf || (_view == leaf->_parent && leaf->_parent->_children.size() <= 2)) {
                                         if (leaf->_parent) leaf->_parent->_configure(_view->_attribute);
                                         fl.emplace_back([&]() {
                                             if (rest) rest->_raise();
                                             _view = rest;
                                         });
-                                        if (_root == _view) {
+                                        if (_root == _view || _root == leaf->_parent)
                                             fl.emplace_back([&]() {
                                                 _root = _view;
                                             });
-                                        }
                                     }
                                     rest = _quit(leaf);
                                     if (rest) rest->_refresh();
