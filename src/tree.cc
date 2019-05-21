@@ -310,8 +310,7 @@ namespace wm::tree {
                 auto grand_parent = parent->_parent;
                 if (grand_parent) {
                     sibling->_parent_iter = grand_parent->_children.insert(parent->_parent_iter, sibling);
-                    if (grand_parent->_iter_active == parent->_parent_iter)
-                        grand_parent->_iter_active = sibling->_parent_iter;
+                    if (grand_parent->_iter_active == parent->_parent_iter) grand_parent->_iter_active = sibling->_parent_iter;
                     grand_parent->_children.erase(parent->_parent_iter);
                 }
                 sibling->_parent = grand_parent;
@@ -775,8 +774,7 @@ namespace wm::tree {
         }
 
         Leaf *Branch::_activeLeaf(const FB &fb) {
-            if (_iter_active == _children.end())
-                _iter_active = (fb ? std::prev(_children.end()) : _children.begin());
+            /*if (_iter_active == _children.end()) */_iter_active = (fb ? std::prev(_children.end()) : _children.begin());
             return (*_iter_active)->_activeLeaf(fb);
         }
 
