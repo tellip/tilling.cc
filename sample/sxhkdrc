@@ -10,6 +10,8 @@ super + d
 	dmenu_run
 super + Return
 	xterm
+super + space
+	nautilus
 super + l
 	slock
 
