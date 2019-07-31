@@ -10,8 +10,10 @@ super + d
 	dmenu_run
 super + Return
 	xterm
+super + b
+	chromium
 super + space
-	nautilus
+	tree_wm client transpose
 super + l
 	slock
 
@@ -29,8 +31,6 @@ alt + {shift + Tab,Tab}
 	tree_wm client view-{backward,forward}
 super + Page_{Up,Down}
 	tree_wm client view-{backward,forward}
-super + Tab
-	tree_wm client transpose
 super + shift + {q,k}
 	tree_wm client {close,kill}-window
 
