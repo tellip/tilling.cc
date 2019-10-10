@@ -1,7 +1,10 @@
 {
-  "border_width": 1,
-  "color": {
-    "normal": "black",
-    "focused": "green"
+  "background": "black",
+  "border": {
+    "width": 1,
+    "color": {
+      "focused": "green",
+      "locked": "red"
+    }
   }
 }

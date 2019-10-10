@@ -27,8 +27,15 @@ namespace wm::tree {
         const xcb_atom_t _xia_protocols, _xia_delete_window;
         const xcb_window_t _mask_layer;
 
-        uint16_t _border_width;
-        uint32_t _normal_pixel, _focused_pixel;
+        struct {
+            uint32_t background;
+            struct {
+                uint16_t width;
+                struct {
+                    uint32_t focused, locked;
+                } color;
+            } border;
+        } _attributes;
         uint16_t _root_width, _root_height;
         HV _root_hv;
 
@@ -40,6 +47,7 @@ namespace wm::tree {
 
         bool _manual_refreshing;
         bool _exiting;
+        bool _active_locked;
     public:
         const std::unordered_map<
                 int,
@@ -85,6 +93,8 @@ namespace wm::tree {
         void transpose();
 
         void closeActive(const bool &);
+
+        void toggleLockingActive();
 
         friend Node;
         friend node::Branch;
@@ -181,94 +191,97 @@ namespace wm::tree {
     const uint32_t root_event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
     const uint32_t leaf_event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE;
     const std::unordered_map<std::string, std::function<void(tree::Space &)>> command_handlers = {
-            {"exit",             [](tree::Space &space) {
+            {"exit",                  [](tree::Space &space) {
                 space.exit();
             }},
 
-            {"refresh",          [](tree::Space &space) {
+            {"refresh",               [](tree::Space &space) {
                 space.refresh(true);
             }},
 
-            {"focus-up",         [](tree::Space &space) {
+            {"focus-up",              [](tree::Space &space) {
                 space.focus(tree::HV::VERTICAL, tree::FB::BACKWARD);
             }},
-            {"focus-right",      [](tree::Space &space) {
+            {"focus-right",           [](tree::Space &space) {
                 space.focus(tree::HV::HORIZONTAL, tree::FB::FORWARD);
             }},
-            {"focus-down",       [](tree::Space &space) {
+            {"focus-down",            [](tree::Space &space) {
                 space.focus(tree::HV::VERTICAL, tree::FB::FORWARD);
             }},
-            {"focus-left",       [](tree::Space &space) {
+            {"focus-left",            [](tree::Space &space) {
                 space.focus(tree::HV::HORIZONTAL, tree::FB::BACKWARD);
             }},
 
-            {"reorder-up",       [](tree::Space &space) {
+            {"reorder-up",            [](tree::Space &space) {
                 space.reorder(tree::HV::VERTICAL, tree::FB::BACKWARD);
             }},
-            {"reorder-right",    [](tree::Space &space) {
+            {"reorder-right",         [](tree::Space &space) {
                 space.reorder(tree::HV::HORIZONTAL, tree::FB::FORWARD);
             }},
-            {"reorder-down",     [](tree::Space &space) {
+            {"reorder-down",          [](tree::Space &space) {
                 space.reorder(tree::HV::VERTICAL, tree::FB::FORWARD);
             }},
-            {"reorder-left",     [](tree::Space &space) {
+            {"reorder-left",          [](tree::Space &space) {
                 space.reorder(tree::HV::HORIZONTAL, tree::FB::BACKWARD);
             }},
 
-            {"reparent-up",      [](tree::Space &space) {
+            {"reparent-up",           [](tree::Space &space) {
                 space.reparent(tree::HV::VERTICAL, tree::FB::BACKWARD);
             }},
-            {"reparent-right",   [](tree::Space &space) {
+            {"reparent-right",        [](tree::Space &space) {
                 space.reparent(tree::HV::HORIZONTAL, tree::FB::FORWARD);
             }},
-            {"reparent-down",    [](tree::Space &space) {
+            {"reparent-down",         [](tree::Space &space) {
                 space.reparent(tree::HV::VERTICAL, tree::FB::FORWARD);
             }},
-            {"reparent-left",    [](tree::Space &space) {
+            {"reparent-left",         [](tree::Space &space) {
                 space.reparent(tree::HV::HORIZONTAL, tree::FB::BACKWARD);
             }},
 
-            {"reorganize-up",    [](tree::Space &space) {
+            {"reorganize-up",         [](tree::Space &space) {
                 space.reorganize(tree::HV::VERTICAL, tree::FB::BACKWARD);
             }},
-            {"reorganize-right", [](tree::Space &space) {
+            {"reorganize-right",      [](tree::Space &space) {
                 space.reorganize(tree::HV::HORIZONTAL, tree::FB::FORWARD);
             }},
-            {"reorganize-down",  [](tree::Space &space) {
+            {"reorganize-down",       [](tree::Space &space) {
                 space.reorganize(tree::HV::VERTICAL, tree::FB::FORWARD);
             }},
-            {"reorganize-left",  [](tree::Space &space) {
+            {"reorganize-left",       [](tree::Space &space) {
                 space.reorganize(tree::HV::HORIZONTAL, tree::FB::BACKWARD);
             }},
 
-            {"view-in",          [](tree::Space &space) {
+            {"view-in",               [](tree::Space &space) {
                 space.viewResize(tree::FB::FORWARD);
             }},
-            {"view-out",         [](tree::Space &space) {
+            {"view-out",              [](tree::Space &space) {
                 space.viewResize(tree::FB::BACKWARD);
             }},
-            {"view-leaf",        [](tree::Space &space) {
+            {"view-leaf",             [](tree::Space &space) {
                 space.viewExtreme(tree::FB::FORWARD);
             }},
-            {"view-root",        [](tree::Space &space) {
+            {"view-root",             [](tree::Space &space) {
                 space.viewExtreme(tree::FB::BACKWARD);
             }},
-            {"view-forward",     [](tree::Space &space) {
+            {"view-forward",          [](tree::Space &space) {
                 space.viewMove(tree::FB::FORWARD);
             }},
-            {"view-backward",    [](tree::Space &space) {
+            {"view-backward",         [](tree::Space &space) {
                 space.viewMove(tree::FB::BACKWARD);
             }},
 
-            {"transpose",        [](tree::Space &space) {
+            {"transpose",             [](tree::Space &space) {
                 space.transpose();
             }},
 
-            {"close-window",     [](tree::Space &space) {
+            {"close-window",          [](tree::Space &space) {
                 space.closeActive(false);
             }},
-            {"kill-window",      [](tree::Space &space) {
+            {"kill-window",           [](tree::Space &space) {
                 space.closeActive(true);
+            }},
+            {"toggle-locking-active", [](tree::Space &space) {
+                space.toggleLockingActive();
             }}
     };
 

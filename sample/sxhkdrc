@@ -33,6 +33,8 @@ super + Page_{Up,Down}
 	tree_wm client view-{backward,forward}
 super + shift + {q,k}
 	tree_wm client {close,kill}-window
+super + shift + l
+    tree_wm client toggle-locking-active
 
 @XF86LaunchA
 	scrot -se 'xclip -selection clipboard -t image/png -i $f && mv $f ~/.cache/SCREEN_SHOT.png'

@@ -1,10 +1,9 @@
 #include "tree.h"
 
 namespace wm::tree {
-    PointerCoordinate::PointerCoordinate(xcb_connection_t *const &x_connection,
-                                         xcb_screen_t *const &x_default_screen) : _x_connection(x_connection),
-                                                                                  _x_default_screen(
-                                                                                          x_default_screen) {
+    PointerCoordinate::PointerCoordinate(xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen)
+            : _x_connection(x_connection),
+              _x_default_screen(x_default_screen) {
         _x = _y = -1;
     }
 
@@ -37,7 +36,8 @@ namespace wm::tree {
         });
     }
 
-    Space::Space(xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen, const std::function<void()> &break_) :
+    Space::Space(xcb_connection_t *const &x_connection, xcb_screen_t *const &x_default_screen,
+                 const std::function<void()> &break_) :
             _breakLoop(break_),
             _x_connection(x_connection),
             _x_default_screen(x_default_screen),
@@ -60,13 +60,15 @@ namespace wm::tree {
                                             leaf->_configure(
                                                     {
                                                             _root_hv,
-                                                            static_cast<int16_t>(-_border_width),
-                                                            static_cast<int16_t>(-_border_width),
-                                                            static_cast<uint16_t>(_root_width + _border_width * 2),
-                                                            static_cast<uint16_t>(_root_height + _border_width * 2)
+                                                            static_cast<int16_t>(-_attributes.border.width),
+                                                            static_cast<int16_t>(-_attributes.border.width),
+                                                            static_cast<uint16_t>(_root_width + _attributes.border.width * 2),
+                                                            static_cast<uint16_t>(_root_height + _attributes.border.width * 2)
                                                     }
                                             );
                                             leaf->_refresh();
+                                            leaf->_focus(true);
+                                            _active = leaf;
                                         } else {
                                             if (_active == _view) {
                                                 fl.emplace_back([&]() {
@@ -77,19 +79,22 @@ namespace wm::tree {
                                                         _root = _view;
                                                     });
                                                 }
-                                                _join(leaf, _active, FB::FORWARD);
+                                                _join(leaf, _view, FB::FORWARD);
                                             } else _join(leaf, _active->_parent, FB::FORWARD);
                                             _activate(leaf);
                                             leaf->_parent->_refresh();
-                                            _active->_focus(false);
+
+                                            if (!_active_locked) {
+                                                _active->_focus(false);
+                                                leaf->_focus(true);
+                                                _active = leaf;
+                                            }
                                         }
                                         for (auto j = fl.cbegin(); j != fl.cend(); ({
                                             (*j)();
                                             j++;
                                         }));
 
-                                        leaf->_focus(true);
-                                        _active = leaf;
                                         xcb_flush(_x_connection);
                                         _pointer_coordinate.record();
                                     } else helper::error("\"_leaves.find(event.xmap.window) != _leaves.end()\"");
@@ -119,10 +124,11 @@ namespace wm::tree {
                                             if (rest) rest->_raise();
                                             _view = rest;
                                         });
-                                        if (_root == _view || _root == leaf->_parent)
+                                        if (_root == _view || _root == leaf->_parent) {
                                             fl.emplace_back([&]() {
                                                 _root = _view;
                                             });
+                                        }
                                     }
                                     rest = _quit(leaf);
                                     if (rest) rest->_refresh();
@@ -160,14 +166,14 @@ namespace wm::tree {
                                                                      int16_t values[] = {leaf->_attribute.y};
                                                                      values;
                                                                  }));
-                                        if (reply->width != leaf->_attribute.width - _border_width * 2)
+                                        if (reply->width != leaf->_attribute.width - _attributes.border.width * 2)
                                             xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_WIDTH, ({
-                                                uint16_t values[] = {(uint16_t) (leaf->_attribute.width - _border_width * 2)};
+                                                uint16_t values[] = {(uint16_t) (leaf->_attribute.width - _attributes.border.width * 2)};
                                                 values;
                                             }));
-                                        if (reply->height != leaf->_attribute.height - _border_width * 2)
+                                        if (reply->height != leaf->_attribute.height - _attributes.border.width * 2)
                                             xcb_configure_window(_x_connection, leaf->_window, XCB_CONFIG_WINDOW_HEIGHT, ({
-                                                uint16_t values[] = {(uint16_t) (leaf->_attribute.height - _border_width * 2)};
+                                                uint16_t values[] = {(uint16_t) (leaf->_attribute.height - _attributes.border.width * 2)};
                                                 values;
                                             }));
                                     }
@@ -211,7 +217,7 @@ namespace wm::tree {
                                 auto i = _leaves.find(enter_notify->event);
                                 if (i != _leaves.end()) {
                                     auto leaf = i->second;
-                                    if ((!_manual_refreshing ? true : (_manual_refreshing = false)) && _active != leaf && !_pointer_coordinate.check()) {
+                                    if (!_active_locked && (!_manual_refreshing ? true : (_manual_refreshing = false)) && _active != leaf && !_pointer_coordinate.check()) {
                                         for (Node *j = leaf; j->_parent; ({
                                             j->_parent->_iter_active = j->_parent_iter;
                                             j = j->_parent;
@@ -252,6 +258,7 @@ namespace wm::tree {
         _root = _view = _active = nullptr;
         _exiting = false;
         _manual_refreshing = false;
+        _active_locked = false;
         refresh();
     }
 
@@ -347,9 +354,10 @@ namespace wm::tree {
             ifs.close();
             using json=json::Json<>;
             auto config = json::parse(ss.str()).as_object();
-            _border_width = static_cast<uint16_t>(config["border_width"].as_number());
-            _normal_pixel = _colorPixel(config["color"].as_object()["normal"].as_string());
-            _focused_pixel = _colorPixel(config["color"].as_object()["focused"].as_string());
+            _attributes.border.width = static_cast<uint16_t>(config["border"].as_object()["width"].as_number());
+            _attributes.background = _colorPixel(config["background"].as_string());
+            _attributes.border.color.focused = _colorPixel(config["border"].as_object()["color"].as_object()["focused"].as_string());
+            _attributes.border.color.locked = _colorPixel(config["border"].as_object()["color"].as_object()["locked"].as_string());
         }
 
         auto reply = xcb_get_geometry_reply(_x_connection, xcb_get_geometry(_x_connection, _x_default_screen->root), nullptr);
@@ -362,7 +370,7 @@ namespace wm::tree {
         }
 
         xcb_change_window_attributes(_x_connection, _mask_layer, XCB_CW_BACK_PIXEL, ({
-            uint32_t values[] = {_normal_pixel};
+            uint32_t values[] = {_attributes.background};
             values;
         }));
         xcb_configure_window(_x_connection, _mask_layer, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, ({
@@ -378,10 +386,10 @@ namespace wm::tree {
             _view->_configure(
                     {
                             _root_hv,
-                            static_cast<int16_t>(-_border_width),
-                            static_cast<int16_t>(-_border_width),
-                            static_cast<uint16_t>(_root_width + _border_width * 2),
-                            static_cast<uint16_t>(_root_height + _border_width * 2)
+                            static_cast<int16_t>(-_attributes.border.width),
+                            static_cast<int16_t>(-_attributes.border.width),
+                            static_cast<uint16_t>(_root_width + _attributes.border.width * 2),
+                            static_cast<uint16_t>(_root_height + _attributes.border.width * 2)
                     }
             );
             _view->_refresh();
@@ -643,12 +651,30 @@ namespace wm::tree {
                 client_message->format = 32;
                 client_message->data.data32[0] = _xia_delete_window;
                 client_message->data.data32[1] = XCB_CURRENT_TIME;
-                xcb_send_event(_x_connection, 0, _active->_window, XCB_EVENT_MASK_NO_EVENT,
-                               (const char *) client_message);
+                xcb_send_event(_x_connection, 0, _active->_window, XCB_EVENT_MASK_NO_EVENT, (const char *) client_message);
                 delete client_message;
             }
             xcb_flush(_x_connection);
         } else if (_exiting) _breakLoop();
+    }
+
+    void Space::toggleLockingActive() {
+        _active_locked = !_active_locked;
+        if (_active) {
+            if (_active_locked) {
+                xcb_change_window_attributes(_x_connection, _active->_window, XCB_CW_BORDER_PIXEL, ({
+                    uint32_t values[] = {_attributes.border.color.locked};
+                    values;
+                }));
+                xcb_configure_window(_x_connection, _active->_window, 0, nullptr);
+            } else {
+                xcb_change_window_attributes(_x_connection, _active->_window, XCB_CW_BORDER_PIXEL, ({
+                    uint32_t values[] = {_attributes.border.color.focused};
+                    values;
+                }));
+            }
+            xcb_flush(_x_connection);
+        }
     }
 
     Node::Node(Space &space) : _space(space) {
@@ -667,20 +693,19 @@ namespace wm::tree {
                 _window(window),
                 _leaves_iter(space._leaves.insert(std::make_pair(window, this)).first) {
             _focused = false;
-            auto reply = xcb_get_geometry_reply(_space._x_connection,
-                                                xcb_get_geometry(_space._x_connection, _window), nullptr);
+            auto reply = xcb_get_geometry_reply(_space._x_connection, xcb_get_geometry(_space._x_connection, _window), nullptr);
             if (!reply) helper::error("xcb_get_geometry_reply");
             _attribute.x = reply->x;
             _attribute.y = reply->y;
-            _attribute.width = (uint16_t) (reply->width + _space._border_width * 2);
-            _attribute.height = (uint16_t) (reply->height + _space._border_width * 2);
+            _attribute.width = (uint16_t) (reply->width + _space._attributes.border.width * 2);
+            _attribute.height = (uint16_t) (reply->height + _space._attributes.border.width * 2);
 
             xcb_configure_window(
                     _space._x_connection,
                     window,
                     XCB_CONFIG_WINDOW_BORDER_WIDTH,
                     ({
-                        uint16_t values[] = {_space._border_width};
+                        uint16_t values[] = {_space._attributes.border.width};
                         values;
                     })
             );
@@ -700,7 +725,7 @@ namespace wm::tree {
                     _window,
                     XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_BORDER_WIDTH,
                     ({
-                        int32_t values[] = {_attribute.x, _attribute.y, _attribute.width - _space._border_width * 2, _attribute.height - _space._border_width * 2, _space._border_width};
+                        int32_t values[] = {_attribute.x, _attribute.y, _attribute.width - _space._attributes.border.width * 2, _attribute.height - _space._attributes.border.width * 2, _space._attributes.border.width};
                         values;
                     })
             );
@@ -742,13 +767,13 @@ namespace wm::tree {
             _focused = focused;
             if (focused) {
                 xcb_change_window_attributes(_space._x_connection, _window, XCB_CW_BORDER_PIXEL, ({
-                    uint32_t values[] = {_space._focused_pixel};
+                    uint32_t values[] = {_space._active_locked ? _space._attributes.border.color.locked : _space._attributes.border.color.focused};
                     values;
                 }));
                 xcb_set_input_focus(_space._x_connection, XCB_INPUT_FOCUS_PARENT, _window, XCB_CURRENT_TIME);
             } else
                 xcb_change_window_attributes(_space._x_connection, _window, XCB_CW_BORDER_PIXEL, ({
-                    uint32_t values[] = {_space._normal_pixel};
+                    uint32_t values[] = {_space._attributes.background};
                     values;
                 }));
         }
@@ -794,14 +819,14 @@ namespace wm::tree {
         void Branch::_configureChildren() {
             switch (_attribute.hv) {
                 case HV::HORIZONTAL: {
-                    auto s = (int16_t) (_attribute.x + _space._border_width);
-                    auto d = (uint16_t) ((_attribute.width - _space._border_width * 2) / _children.size());
+                    auto s = (int16_t) (_attribute.x + _space._attributes.border.width);
+                    auto d = (uint16_t) ((_attribute.width - _space._attributes.border.width * 2) / _children.size());
                     for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
                         (*i++)->_configure(
                                 {
                                         HV(!_attribute.hv),
-                                        s, (int16_t) (_attribute.y + _space._border_width),
-                                        d, (uint16_t) (_attribute.height - _space._border_width * 2)
+                                        s, (int16_t) (_attribute.y + _space._attributes.border.width),
+                                        d, (uint16_t) (_attribute.height - _space._attributes.border.width * 2)
                                 }
                         );
                         s += d;
@@ -809,22 +834,22 @@ namespace wm::tree {
                     (*std::prev(_children.cend()))->_configure(
                             {
                                     HV(!_attribute.hv),
-                                    s, (int16_t) (_attribute.y + _space._border_width),
-                                    (uint16_t) (_attribute.x + _attribute.width - _space._border_width - s),
-                                    (uint16_t) (_attribute.height - _space._border_width * 2)
+                                    s, (int16_t) (_attribute.y + _space._attributes.border.width),
+                                    (uint16_t) (_attribute.x + _attribute.width - _space._attributes.border.width - s),
+                                    (uint16_t) (_attribute.height - _space._attributes.border.width * 2)
                             }
                     );
                     break;
                 }
                 case HV::VERTICAL: {
-                    auto s = (int16_t) (_attribute.y + _space._border_width);
-                    auto d = (uint16_t) ((_attribute.height - _space._border_width * 2) / _children.size());
+                    auto s = (int16_t) (_attribute.y + _space._attributes.border.width);
+                    auto d = (uint16_t) ((_attribute.height - _space._attributes.border.width * 2) / _children.size());
                     for (auto i = _children.cbegin(); i != std::prev(_children.cend()); ({
                         (*i++)->_configure(
                                 {
                                         HV(!_attribute.hv),
-                                        (int16_t) (_attribute.x + _space._border_width), s,
-                                        (uint16_t) (_attribute.width - _space._border_width * 2), d
+                                        (int16_t) (_attribute.x + _space._attributes.border.width), s,
+                                        (uint16_t) (_attribute.width - _space._attributes.border.width * 2), d
                                 }
                         );
                         s += d;
@@ -832,9 +857,9 @@ namespace wm::tree {
                     (*std::prev(_children.cend()))->_configure(
                             {
                                     HV(!_attribute.hv),
-                                    (int16_t) (_attribute.x + _space._border_width), s,
-                                    (uint16_t) (_attribute.width - _space._border_width * 2),
-                                    (uint16_t) (_attribute.y + _attribute.height - _space._border_width - s)
+                                    (int16_t) (_attribute.x + _space._attributes.border.width), s,
+                                    (uint16_t) (_attribute.width - _space._attributes.border.width * 2),
+                                    (uint16_t) (_attribute.y + _attribute.height - _space._attributes.border.width - s)
                             }
                     );
                 }
