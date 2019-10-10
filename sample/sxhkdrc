@@ -11,7 +11,7 @@ super + d
 super + Return
 	xterm
 super + b
-	chromium
+	optirun google-chrome-stable
 super + space
 	tree_wm client transpose
 super + l

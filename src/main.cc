@@ -16,17 +16,22 @@ int main(int argc, char **argv) {
                           << "\t" << "server\n"
                           << "\t" << "client ...\n";
                 std::list<std::string> command_list;
-                for (auto i = wm::tree::command_handlers.cbegin(); i != wm::tree::command_handlers.cend(); command_list.emplace_back((i++)->first));
+                for (auto i = wm::tree::command_handlers.cbegin();
+                     i != wm::tree::command_handlers.cend(); command_list.emplace_back((i++)->first));
                 command_list.sort();
                 for (auto i = command_list.cbegin(); i != command_list.cend(); std::cout << "\t\t" << *(i++) << "\n");
             }},
             {"server", []() {
-                wm::server::server([&](const auto &x_connection, const auto &x_default_screen, const auto &break_, const auto &loop, const auto &clean) {
-                    wm::tree::tree(x_connection, x_default_screen, break_, [&](const auto &command_handler, const auto &root_event_mask, const auto &leaf_event_mask, const auto &event_handler) {
-                        loop(command_handler, root_event_mask, leaf_event_mask, event_handler, [&](const auto &join) {
-                            join();
-                        });
-                    });
+                wm::server::server([&](const auto &x_connection, const auto &x_default_screen, const auto &break_,
+                                       const auto &loop, const auto &clean) {
+                    wm::tree::tree(x_connection, x_default_screen, break_,
+                                   [&](const auto &command_handler, const auto &root_event_mask,
+                                       const auto &leaf_event_mask, const auto &event_handler) {
+                                       loop(command_handler, root_event_mask, leaf_event_mask, event_handler,
+                                            [&](const auto &join) {
+                                                join();
+                                            });
+                                   });
                     clean();
                 });
             }},
