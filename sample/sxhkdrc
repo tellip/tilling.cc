@@ -14,9 +14,9 @@ XF86Audio{Lower,Raise}Volume
 super + {space,Return}
 	{dmenu_run,xterm}
 super + {b,n}
-	optirun {google-chrome-stable,nautilus}
+	{chromium,nautilus}
 super + l
-	sudo physlock
+	physlock
 
 super + shift + e
 	tree_wm client exit
