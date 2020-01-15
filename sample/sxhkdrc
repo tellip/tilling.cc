@@ -1,5 +1,3 @@
-
-
 XF86MonBrightness{Down,Up}
 	xbacklight -{dec,inc} 5
 
@@ -19,27 +17,27 @@ super + l
 	physlock
 
 super + shift + e
-	tree_wm client exit
+	tilling client exit
 super + F5
-	tree_wm client refresh
+	tilling client refresh
 super + {_,shift +,alt +,ctrl +} {Up,Right,Down,Left}
-	tree_wm client {focus,reorder,reparent,reorganize}-{up,right,down,left}
+	tilling client {focus,reorder,reparent,reorganize}-{up,right,down,left}
 super + {Escape,grave}
-	tree_wm client view-{out,in}
+	tilling client view-{out,in}
 super + {_,shift} + f
-	tree_wm client view-{leaf,root}
+	tilling client view-{leaf,root}
 alt + {shift + Tab,Tab}
-	tree_wm client view-{backward,forward}
+	tilling client view-{backward,forward}
 super + Tab
-	tree_wm client transpose
+	tilling client transpose
 super + Page_{Up,Down}
-	tree_wm client view-{backward,forward}
+	tilling client view-{backward,forward}
 alt + F4
-	tree_wm client close-window
+	tilling client close-window
 super + shift + {q,k}
-	tree_wm client {close,kill}-window
+	tilling client {close,kill}-window
 super + shift + l
-	tree_wm client toggle-locking-active
+	tilling client toggle-locking-active
 
 super + {alt,ctrl,alt + ctrl} + Escape
 	systemctl {suspend,reboot,poweroff}
