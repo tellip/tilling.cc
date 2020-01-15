@@ -5,7 +5,7 @@ int main(int argc, char **argv) {
     std::string
             arg = argv[0],
             file = ({
-        using namespace regular::shortcut::narrow;
+        using namespace reg::shortcut::narrow;
         split(arg, plc_om(ps("/\\"))).back();
     });
 
