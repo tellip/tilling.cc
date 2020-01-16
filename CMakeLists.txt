@@ -1,7 +1,6 @@
-cmake_minimum_required(VERSION 3.9)
-project(tilling)
+cmake_minimum_required(VERSION 3.15)
+project(tilling_cc)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lxcb -lpthread")
+set(CMAKE_CXX_STANDARD 20)
 
-add_executable(tilling src/main.cc)
+add_executable(tilling_cc main.cpp)
