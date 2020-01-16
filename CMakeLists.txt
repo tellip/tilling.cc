@@ -3,4 +3,6 @@ project(tilling_cc)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(tilling_cc main.cpp)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lxcb -lpthread")
+
+add_executable(tilling src/main.cc)
