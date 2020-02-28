@@ -40,4 +40,4 @@ super + shift + l
 	tilling client toggle-locking-active
 
 super + {alt,ctrl,alt + ctrl} + Escape
-	systemctl {suspend,reboot,poweroff}
+	systemctl {suspend,reboot,poweroff} -i
