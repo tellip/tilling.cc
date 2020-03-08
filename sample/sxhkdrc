@@ -39,5 +39,8 @@ super + shift + {q,k}
 super + shift + l
 	tilling client toggle-locking-active
 
-super + {alt,ctrl,alt + ctrl} + Delete
-	systemctl {suspend,reboot,poweroff}
+super + alt + Delete
+	systemctl suspend; physlock
+super + {ctrl,alt + ctrl} + Delete
+	systemctl {reboot,poweroff}
+
