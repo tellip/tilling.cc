@@ -9,10 +9,8 @@ XF86Audio{Lower,Raise}Volume
 {Print,@XF86LaunchA}
 	scrot -{_,s}e 'xclip -selection clipboard -t image/png -i $f && mv $f ~/.cache/SCREEN_SHOT.png'
 
-super + {space,Return}
-	{dmenu_run,xterm}
-super + {b,n}
-	{chromium,nautilus}
+super + {space,Return,b}
+	{dmenu_run,xterm,chromium}
 super + l
 	physlock
 
@@ -24,7 +22,7 @@ super + {_,shift +,alt +,ctrl +} {Up,Right,Down,Left}
 	tilling client {focus,reorder,reparent,reorganize}-{up,right,down,left}
 super + {Escape,grave}
 	tilling client view-{out,in}
-super + {_,shift} + f
+super + {f,d}
 	tilling client view-{leaf,root}
 alt + {shift + Tab,Tab}
 	tilling client view-{backward,forward}
