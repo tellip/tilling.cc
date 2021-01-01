@@ -5,8 +5,8 @@ int main(int argc, char **argv) {
     std::string
             arg = argv[0],
             file = ({
-        using namespace reg::shortcut::narrow;
-        split(arg, plc_om(ps("/\\"))).back();
+        using ra = regular::Alias<char>;
+        regular::split<char>(arg, ra::pbc(ra::plc("/\\"))).back();
     });
 
     std::unordered_map<std::string, std::function<void()>> actions = {
@@ -42,13 +42,12 @@ int main(int argc, char **argv) {
 
     if (argc < 2 || ({
         auto i = actions.find(argv[1]);
-        i == actions.cend() ? true : ({
+        i == actions.cend() || ({
             i->second();
             false;
         });
     }))
         std::cout << "Arguments are invalid, try \"" + file + " help\".\n";
-
 
     return EXIT_SUCCESS;
 }
